@@ -14,6 +14,10 @@ router.get("/rent-collection", analyticsController.getRentCollections);
 
 router.get("/room-overview", analyticsController.getRoomOverview)
 
+router.get("/payment-categories", analyticsController.getPaymentCategories);
+
+router.get("/payment-ratio", analyticsController.getPaymentRatio);
+
 
 
 module.exports = router;

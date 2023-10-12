@@ -83,3 +83,36 @@ exports.getRoomOverview = asyncHandler(async (req, res, next) => {
     connection.end();
     res.json(data);
 });
+
+exports.getPaymentCategories = asyncHandler(async (req, res, next) => {
+    const connection = await pool.getConnection();
+    const recentPayments = await connection.query("CALL p_paid_categories();");
+    const arrayOfObjects = [recentPayments[0][0], recentPayments[1][0], recentPayments[2][0]];
+    const data = [
+        { name: "Room", revenue: parseInt(arrayOfObjects[0]["Room Revenue"]) },
+        { name: "Necessity", revenue: parseInt(arrayOfObjects[1]["Necessity Revenue"]) },
+        { name: "Utility", revenue: parseInt(arrayOfObjects[2]["Utility Revenue"]) },
+    ];
+    connection.end();
+    res.json(data);
+});
+
+exports.getPaymentRatio = asyncHandler(async (req, res, next) => {
+    let data = [];
+    const connection = await pool.getConnection();
+    const rows = await connection.query("SELECT COUNT(*) AS x  FROM v_paid_unpaid_analytics WHERE YEAR(due) = YEAR(CURDATE()) AND MONTH(due)=MONTH(CURDATE())+1 GROUP by (is_paid);");
+    if (rows.length > 0) {
+        data = [
+            { name: "paid", value: parseInt(rows[0]?.x) },
+            { name: "unpaid", value: parseInt(rows[1]?.x) }
+        ]
+    }
+    else {
+        data = [
+            { name: "paid", value: 0 },
+            { name: "unpaid", value: 0 }
+        ]
+    }
+    connection.end();
+    res.json(data);
+});
