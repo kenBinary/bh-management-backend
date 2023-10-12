@@ -62,32 +62,4 @@ router.get("/analytics/payment-analytics", asyncHandler(async (req, res, next) =
     res.json(data);
 }));
 
-
-
-
 module.exports = router;
-
-
-// router.get("/analytics/paid-unpaid", asyncHandler(async (req, res, next) => {
-//     // get unpaid and paid ratio
-//     // const rows = await connection.query("SELECT COUNT(*) AS x  FROM v_paid_unpaid_analytics WHERE YEAR(due) = YEAR(CURDATE()) AND MONTH(due)=MONTH(CURDATE())+1 GROUP by (is_paid);");
-//     let data = [];
-//     let month = req.query.month;
-//     const connection = await pool.getConnection();
-//     const rows = await connection.query(`SELECT COUNT(*) AS x  FROM v_paid_unpaid_analytics WHERE YEAR(due) = YEAR(CURDATE()) AND MONTH(due)=${month} GROUP by (is_paid);`);
-//     console.log(rows)
-//     if (rows.length > 0) {
-//         data = [
-//             { name: "paid", value: parseInt(rows[0]?.x) },
-//             { name: "unpaid", value: parseInt(rows[1]?.x) }
-//         ]
-//     }
-//     else {
-//         data = [
-//             { name: "paid", value: 0 },
-//             { name: "unpaid", value: 0 }
-//         ]
-//     }
-//     connection.end();
-//     res.json(data);
-// }));

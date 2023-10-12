@@ -39,7 +39,7 @@ const roomFeeRouter = require("./routes/roomfee");
 const utilityFeeRouter = require("./routes/utilityfee");
 const necessityfeeRouter = require("./routes/necessityfee");
 const paymentRouter = require("./routes/payment");
-const dashboardRouter = require("./routes/dashboard");
+const dashboardRouter = require("./routes/analytics");
 
 // routes used
 app.use('/tenant', tenantRouter);

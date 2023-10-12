@@ -75,12 +75,5 @@ router.put("/:tenantid", asyncHandler(async (req, res, next) => {
         "status": "200",
     });
 }));
-// assign a tenant to a room
-// - room_fee gets created
-// - room_fee links tenant to room
-// assign a tenant to an amenity
-// assign a tenant to a utility
-// make tenant pay room along with utility
-// make tenant optionally pay amenity
 
 module.exports = router;

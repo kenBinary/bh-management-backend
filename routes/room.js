@@ -63,30 +63,4 @@ router.get("/status-analytics", asyncHandler(async (req, res, next) => {
     res.json(data);
 }));
 
-
-// router.get("/:roomNumber", asyncHandler(async (req, res, next) => {
-//     // get specific room
-//     const roomNumber = req.params.roomNumber;
-//     const connection = await pool.getConnection();
-//     const room = await connection.execute("select * from room where room_number = ?", [roomNumber]);
-//     connection.end();
-//     res.json(room);
-// }));
-
-
-// router.put("/:roomNumber", asyncHandler(async (req, res, next) => {
-//     // update specific room
-//     const roomNumber = req.params.roomNumber;
-//     const headCount = req.body.headCount;
-//     const roomStatus = req.body.roomStatus;
-//     const roomFee = req.body.fee;
-//     const connection = await pool.getConnection();
-//     await connection.execute("update room set headcount = ?, room_status = ?, room_fee = ? where room_number = ?", [headCount, roomStatus, roomFee, roomNumber]);
-//     connection.end();
-//     res.status(200).json({
-//         message: "record updated"
-//     });
-// }));
-
-
 module.exports = router;

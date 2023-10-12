@@ -2,7 +2,6 @@ const express = require('express');
 const router = express.Router();
 const pool = require('../models/dbPool');
 const asyncHandler = require('express-async-handler');
-const uuid = require("short-uuid");
 router.get('/', asyncHandler(async (req, res, next) => {
     // get all necessity
     const connection = await pool.getConnection();
