@@ -11,7 +11,7 @@ router.get("/recent", asyncHandler(async (req, res, next) => {
     res.json(recentPayments);
 }));
 router.get("/history/:id", asyncHandler(async (req, res, next) => {
-    // get recent payments
+    // get tenant payment history
     const tenantId = req.params.id;
     const connection = await pool.getConnection();
     const history = await connection.execute("CALL `p_tenant_payment_history`(?)", [tenantId]);
