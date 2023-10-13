@@ -1,5 +1,6 @@
 const pool = require('../models/dbPool');
 const asyncHandler = require('express-async-handler');
+const { param } = require("express-validator");
 
 exports.getRecentPayments = asyncHandler(async (req, res, next) => {
     const connection = await pool.getConnection();
@@ -14,6 +15,13 @@ exports.getRoomFees = asyncHandler(async (req, res, next) => {
     res.json(rows);
 });
 
+exports.getUnpaidRoomFees = asyncHandler(async (req, res, next) => {
+    const connection = await pool.getConnection();
+    const rows = await connection.query("select * from v_room_fee_invoice");
+    connection.end();
+    res.json(rows);
+});
+
 exports.getRoomFee = asyncHandler(async (req, res, next) => {
     const connection = await pool.getConnection();
     const feeId = req.params.id;
@@ -22,19 +30,29 @@ exports.getRoomFee = asyncHandler(async (req, res, next) => {
     res.json(row);
 });
 
-exports.payRoomFee = asyncHandler(async (req, res, next) => {
-    const feeId = req.params.id;
-    const connection = await pool.getConnection();
-    await connection.execute("call p_pay_room(?)", [feeId]);
-    connection.end();
-    res.status(200).json({
-        message: "record updated"
-    });
-});
+exports.payRoomFee = [
+    param("id").isAlphanumeric().trim().escape().isLength({ min: 1 }),
+    asyncHandler(async (req, res, next) => {
+        const feeId = req.params.id;
+        const connection = await pool.getConnection();
+        await connection.execute("call p_pay_room(?)", [feeId]);
+        connection.end();
+        res.status(200).json({
+            message: "record updated"
+        });
+    })
+];
 
 exports.getNecessityFees = asyncHandler(async (req, res, next) => {
     const connection = await pool.getConnection();
     const rows = await connection.query("select * from necessity_fee");
+    connection.end();
+    res.json(rows);
+});
+
+exports.getUnpaidNecessityFees = asyncHandler(async (req, res, next) => {
+    const connection = await pool.getConnection();
+    const rows = await connection.query("select * from v_necessity_fee_invoice");
     connection.end();
     res.json(rows);
 });
@@ -47,19 +65,29 @@ exports.getNecessityFee = asyncHandler(async (req, res, next) => {
     res.json(rows);
 });
 
-exports.payNecessityFee = asyncHandler(async (req, res, next) => {
-    const feeId = req.params.id;
-    const connection = await pool.getConnection();
-    await connection.execute("call p_pay_necessity(?)", [feeId]);
-    connection.end();
-    res.status(200).json({
-        message: "record updated"
-    });
-});
+exports.payNecessityFee = [
+    param("id").isAlphanumeric().trim().escape().isLength({ min: 1 }),
+    asyncHandler(async (req, res, next) => {
+        const feeId = req.params.id;
+        const connection = await pool.getConnection();
+        await connection.execute("call p_pay_necessity(?)", [feeId]);
+        connection.end();
+        res.status(200).json({
+            message: "record updated"
+        });
+    })
+];
 
 exports.getUtilityFees = asyncHandler(async (req, res, next) => {
     const connection = await pool.getConnection();
     const rows = await connection.query("select * from utility_fee");
+    connection.end();
+    res.json(rows);
+});
+
+exports.getUnpaidUtilityFees = asyncHandler(async (req, res, next) => {
+    const connection = await pool.getConnection();
+    const rows = await connection.query("select * from v_utility_fee_invoice");
     connection.end();
     res.json(rows);
 });
@@ -72,12 +100,15 @@ exports.getUtilityFee = asyncHandler(async (req, res, next) => {
     res.json(row);
 });
 
-exports.payUtilityfee = asyncHandler(async (req, res, next) => {
-    const connection = await pool.getConnection();
-    const feeId = req.params.id;
-    await connection.execute("call p_pay_utility(?)", [feeId]);
-    connection.end();
-    res.status(200).json({
-        message: "record updated"
-    });
-})
+exports.payUtilityfee = [
+    param("id").isAlphanumeric().trim().escape().isLength({ min: 1 }),
+    asyncHandler(async (req, res, next) => {
+        const connection = await pool.getConnection();
+        const feeId = req.params.id;
+        await connection.execute("call p_pay_utility(?)", [feeId]);
+        connection.end();
+        res.status(200).json({
+            message: "record updated"
+        });
+    })
+];

@@ -9,6 +9,7 @@ const bcrypt = require('bcrypt');
 const pool = require('./models/dbPool')
 const asyncHandler = require('express-async-handler')
 const cors = require('cors');
+const { body, validationResult, param } = require("express-validator");
 
 
 app.use(logger('dev'));
@@ -30,25 +31,30 @@ app.set('view engine', 'ejs');
 // });
 app.use(cors());
 
+app.use((req, res, next) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    res.status(400).json({
+      errors: errors.array()
+    });
+    return;
+  }
+  else {
+    next();
+  }
+});
+
 
 // imported routes
 const tenantRouter = require('./routes/tenant');
 const roomRouter = require("./routes/room");
-const necessityRouter = require("./routes/necessity");
-const roomFeeRouter = require("./routes/roomfee");
-const utilityFeeRouter = require("./routes/utilityfee");
-const necessityfeeRouter = require("./routes/necessityfee");
 const paymentRouter = require("./routes/payment");
 const dashboardRouter = require("./routes/analytics");
 
 // routes used
 app.use('/tenant', tenantRouter);
-app.use("/necessity", necessityRouter);
-app.use("/roomfee", roomFeeRouter);
-app.use("/utilityfee", utilityFeeRouter);
-app.use("/necessityfee", necessityfeeRouter);
 app.use("/payment", paymentRouter);
-app.use("/dashboard", dashboardRouter);
+app.use("/analytics", dashboardRouter);
 app.use("/room", roomRouter);
 app.post("/login", asyncHandler(async (req, res, next) => {
   const username = req.body.username;

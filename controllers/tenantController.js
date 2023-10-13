@@ -1,7 +1,6 @@
-const express = require('express');
-const router = express.Router();
 const pool = require('../models/dbPool');
 const asyncHandler = require('express-async-handler')
+const { body, param } = require("express-validator");
 
 exports.getTenants = asyncHandler(async (req, res, next) => {
     let connection = await pool.getConnection();
@@ -9,26 +8,28 @@ exports.getTenants = asyncHandler(async (req, res, next) => {
     if (connection) {
         connection.end();
     }
-    res.json(rows)
+    res.json(rows);
 });
 
-exports.newTenant = asyncHandler(async (req, res, next) => {
-    const firstName = req.body.firstName;
-    const lastName = req.body.lastName;
-    const contactNumber = req.body.contactNum;
-    const identificationNumber = req.body.identificationNumber;
-    const connection = await pool.getConnection();
-    console.log(firstName);
-    console.log(lastName);
-    console.log(contactNumber);
-    console.log(identificationNumber);
-    await connection.execute("CALL p_add_tenant(?,?,?,?)", [firstName, lastName, contactNumber, identificationNumber]);
-    connection.end();
-    res.status(200).json({
-        "message": "Tenant Created",
-        "status": "200",
-    });
-});
+exports.newTenant = [
+    body("firstName").isAlphanumeric().trim().escape().isLength({ min: 1 }),
+    body("lastName").isAlphanumeric().trim().escape().isLength({ min: 1 }),
+    body("contactNum").isAlphanumeric().trim().escape().isLength({ min: 1 }),
+    body("identificationNumber").isString().trim().escape().isLength({ min: 1 }),
+    asyncHandler(async (req, res, next) => {
+        const firstName = req.body.firstName;
+        const lastName = req.body.lastName;
+        const contactNumber = req.body.contactNum;
+        const identificationNumber = req.body.identificationNumber;
+        const connection = await pool.getConnection();
+        await connection.execute("CALL p_add_tenant(?,?,?,?)", [firstName, lastName, contactNumber, identificationNumber]);
+        connection.end();
+        res.status(200).json({
+            "message": "Tenant Created",
+            "status": "200",
+        });
+    })
+];
 
 exports.getNewTenants = asyncHandler(async (req, res, next) => {
     let connection = await pool.getConnection();
@@ -47,36 +48,90 @@ exports.getTenant = asyncHandler(async (req, res, next) => {
     res.json(row)
 });
 
-exports.editTenant = asyncHandler(async (req, res, next) => {
-    const tenantId = req.params.tenantid;
-    const firstName = req.body.newFirstName;
-    const lastName = req.body.newLastName;
-    const contact = req.body.newContactNum;
-    const archiveStatus = req.body.newStatus;
-    const identification = req.body.newIdentification;
-    const connection = await pool.getConnection();
-    await connection.execute("CALL p_edit_tenant(?,?,?,?,?,?)", [tenantId, firstName, lastName, contact, archiveStatus, identification]);
-    connection.end();
-    res.status(200).json({
-        "message": "record updated",
-        "status": "200",
-    });
-});
+exports.editTenant = [
+    param("tenantid").isAlphanumeric().trim().escape().isLength({ min: 1 }),
+    body("newFirstName").isAlphanumeric().trim().escape().isLength({ min: 1 }),
+    body("newLastName").isAlphanumeric().trim().escape().isLength({ min: 1 }),
+    body("newContactNum").isAlphanumeric().trim().escape().isLength({ min: 1 }),
+    body("newStatus").isAlphanumeric().trim().escape().isLength({ min: 1 }),
+    body("newIdentification").isString().trim().escape().isLength({ min: 1 }),
+    asyncHandler(async (req, res, next) => {
+        const tenantId = req.params.tenantid;
+        const firstName = req.body.newFirstName;
+        const lastName = req.body.newLastName;
+        const contact = req.body.newContactNum;
+        const archiveStatus = req.body.newStatus;
+        const identification = req.body.newIdentification;
+        const connection = await pool.getConnection();
+        await connection.execute("CALL p_edit_tenant(?,?,?,?,?,?)", [tenantId, firstName, lastName, contact, archiveStatus, identification]);
+        connection.end();
+        res.status(200).json({
+            "message": "record updated",
+            "status": "200",
+        });
+    })
+];
 
-exports.addNecessity = asyncHandler(async (req, res, next) => {
-    const id = req.body.newId;
-    const fee = req.body.newFee;
-    const type = req.body.newType;
-    const connection = await pool.getConnection();
-    await connection.execute("call p_add_necessity(?,?,?)", [fee, type, id]);
-    connection.end();
-    res.status(200).json({
-        message: "necessity added"
-    });
-});
+exports.addNecessity = [
+    body("newId").isAlphanumeric().trim().escape().isLength({ min: 1 }),
+    body("newFee").isInt().trim().escape().isLength({ min: 1 }),
+    body("newType").isAlphanumeric().trim().escape().isLength({ min: 1 }),
+    asyncHandler(async (req, res, next) => {
+        const id = req.body.newId;
+        const fee = req.body.newFee;
+        const type = req.body.newType;
+        const connection = await pool.getConnection();
+        await connection.execute("call p_add_necessity(?,?,?)", [fee, type, id]);
+        connection.end();
+        res.status(200).json({
+            message: "necessity added"
+        });
+    })
+];
 
 exports.getPaymentHistory = asyncHandler(async (req, res, next) => {
     const tenantId = req.params.id;
+    const connection = await pool.getConnection();
+    const history = await connection.execute("CALL `p_tenant_payment_history`(?)", [tenantId]);
+    const data = []
+    if (history.flat().length > 2) {
+        history.flat().forEach((element, index, array) => {
+            if (!(index === array.length - 1)) {
+                data.push(element);
+            }
+        });
+    }
+    connection.end();
+    res.json(data);
+});
+
+exports.getTenantNecessity = asyncHandler(async (req, res, next) => {
+    const id = req.params.tenantid;
+    const connection = await pool.getConnection();
+    const rows = await connection.execute("SELECT DISTINCT necessity.necessity_type as 'necessity type', necessity.necessity_fee as 'necessity fee' FROM necessity INNER JOIN necessity_fee ON necessity_fee.necessity_id = necessity.necessity_id INNER JOIN tenant ON necessity_fee.tenant_id = tenant.tenant_id WHERE tenant.tenant_id = ?;", [id]);
+    connection.end();
+    res.json(rows);
+});
+
+exports.newTenantNecessity = [
+    param("tenantid").isAlphanumeric().trim().escape().isLength({ min: 1 }),
+    body("newFee").isInt().trim().escape().isLength({ min: 1 }),
+    body("newType").isAlphanumeric().trim().escape().isLength({ min: 1 }),
+    asyncHandler(async (req, res, next) => {
+        const id = req.params.tenantid;
+        const fee = req.body.newFee;
+        const type = req.body.newType;
+        const connection = await pool.getConnection();
+        await connection.execute("call p_add_necessity(?,?,?)", [fee, type, id]);
+        connection.end();
+        res.status(200).json({
+            message: "necessity added"
+        });
+    })
+];
+
+exports.getPaymentHistory = asyncHandler(async (req, res, next) => {
+    const tenantId = req.params.tenantid;
     const connection = await pool.getConnection();
     const history = await connection.execute("CALL `p_tenant_payment_history`(?)", [tenantId]);
     const data = []
