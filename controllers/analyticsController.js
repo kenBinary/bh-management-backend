@@ -77,8 +77,8 @@ exports.getRoomOverview = asyncHandler(async (req, res, next) => {
     const connection = await pool.getConnection();
     const rooms = await connection.query("SELECT COUNT(room_status) AS x FROM room GROUP BY (room_status);");
     const data = [
-        { name: "vacant", value: parseInt(rooms[0].x) },
-        { name: "occupied", value: parseInt(rooms[1].x) },
+        { name: "vacant", value: parseInt((rooms[0]?.x ?? 0)) },
+        { name: "occupied", value: parseInt((rooms[1]?.x) ?? 0) },
     ]
     connection.end();
     res.json(data);

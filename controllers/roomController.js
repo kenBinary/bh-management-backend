@@ -17,17 +17,25 @@ exports.assignRoom = [
     body("tenantId").isAlphanumeric().escape().trim().isLength({ min: 1 }),
     body("internetTrue").isAlphanumeric().escape().trim().isLength({ min: 1 }),
     asyncHandler(async (req, res, next) => {
-        const dueYearMonth = format(addMonths(new Date(), 1), 'yyyy-MM');
-        const roomNumber = req.params.roomId;
-        const tenantId = req.body.tenantId;
-        const internetTrue = (req.body.internetTrue === true) ? "1" : "0";
-        const currentDue = `${dueYearMonth}-05`;
         const connection = await pool.getConnection();
-        await connection.execute("CALL p_assign_room(?,?,?,?);", [roomNumber, tenantId, internetTrue, currentDue]);
+        const rows = await connection.execute("select headcount,room_type from room where room_number = ?", [req.params.roomId]);
+        if ((rows[0].headcount < 1 && rows[0].room_type === "single room") || (rows[0].headcount < 2 && rows[0].room_type === "double room")) {
+            const dueYearMonth = format(addMonths(new Date(), 1), 'yyyy-MM');
+            const roomNumber = req.params.roomId;
+            const tenantId = req.body.tenantId;
+            const internetTrue = (req.body.internetTrue === true) ? "1" : "0";
+            const currentDue = `${dueYearMonth}-05`;
+            await connection.execute("CALL p_assign_room(?,?,?,?);", [roomNumber, tenantId, internetTrue, currentDue]);
+            res.status(200).json({
+                message: "tenant assigned to room"
+            });
+        }
+        else {
+            res.status(400).json({
+                message: "Room Full"
+            });
+        }
         connection.end();
-        res.status(200).json({
-            message: "tenant assigned to room"
-        });
     })
 ];
 
