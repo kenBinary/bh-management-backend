@@ -101,7 +101,9 @@ exports.freeRoom = [
             const roomValues = [isOccupied, isFull, occupantCount, roomId];
             await connection.execute(roomQuery, roomValues);
 
-            const [tenantList] = await connection.query("select tenant.tenant_id, tenant.first_name, tenant.last_name, contract.contract_id from tenant inner join contract on tenant.tenant_id = contract.tenant_id where tenant.occupancy_status = false;");
+            const tenantListQuery = "select tenant.tenant_id, tenant.first_name, tenant.last_name, contract.contract_id from tenant inner join contract on contract.tenant_id = tenant.tenant_id inner join room on contract.room_number = room.room_number where room.room_number = ?";
+            const tenantListValues = [roomId];
+            const [tenantList] = await connection.execute(tenantListQuery, tenantListValues);
             const [roomList] = await connection.query("select * from room");
 
             await connection.commit();
