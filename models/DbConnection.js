@@ -10,6 +10,7 @@ const pool = mysql.createPool({
     connectionLimit: 10,
     idleTimeout: 60000,
     enableKeepAlive: true,
+    dateStrings: true,
 });
 
 module.exports = pool;

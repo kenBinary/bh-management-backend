@@ -25,6 +25,7 @@
     "mysql2": "^3.9.0",
     "passport": "^0.6.0",
     "passport-local": "^1.0.0",
+    "short-unique-id": "^5.0.3",
     "short-uuid": "^4.2.2",
     "uuid": "^9.0.1"
   },

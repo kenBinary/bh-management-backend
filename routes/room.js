@@ -4,7 +4,7 @@ const roomController = require("../controllers/roomController");
 
 router.get("/", roomController.getRooms);
 
-router.get("/:roomId/tenant", roomController.getTenantsFromRoom);
+router.get("/:room_number/tenant", roomController.getTenantsFromRoom);
 
 router.post("/:roomId/assign-room", roomController.assignRoom);
 

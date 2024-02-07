@@ -31,6 +31,9 @@ app.set('view engine', 'ejs');
 // });
 app.use(cors());
 
+// remove this
+// app.use(function (req, res, next) { setTimeout(next, 1000) });
+
 app.use((req, res, next) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
@@ -50,12 +53,15 @@ const tenantRouter = require('./routes/tenant');
 const roomRouter = require("./routes/room");
 const paymentRouter = require("./routes/payment");
 const dashboardRouter = require("./routes/analytics");
+const contractRouter = require("./routes/contract");
+
 
 // routes used
 app.use('/tenant', tenantRouter);
 app.use("/payment", paymentRouter);
 app.use("/analytics", dashboardRouter);
 app.use("/room", roomRouter);
+app.use("/contract", contractRouter);
 app.post("/login", asyncHandler(async (req, res, next) => {
   const username = req.body.username;
   const password = req.body.password;
