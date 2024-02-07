@@ -124,7 +124,7 @@ exports.freeRoom = [
 
 exports.getTenantsFromRoom = asyncHandler(async (req, res, next) => {
     const { room_number } = req.params;
-    const query = "select tenant.tenant_id, tenant.first_name, tenant.last_name,tenant.occupancy_status, tenant.contact_number,tenant.archive_status from tenant inner join contract on contract.tenant_id = tenant.tenant_id inner join room on contract.room_number = room.room_number where room.room_number = ?;"
+    const query = "select tenant.tenant_id, tenant.first_name, tenant.last_name, contract.contract_id from tenant inner join contract on contract.tenant_id = tenant.tenant_id inner join room on contract.room_number = room.room_number where room.room_number = ?;"
     const connection = await pool.getConnection();
     const [data] = await connection.execute(query, [room_number]);;
     connection.release();
