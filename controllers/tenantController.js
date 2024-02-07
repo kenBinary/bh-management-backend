@@ -77,7 +77,7 @@ exports.editTenant = [
 
 exports.getUnassignedTenants = asyncHandler(async (req, res, next) => {
     const connection = await pool.getConnection();
-    const query = "select tenant.tenant_id, tenant.first_name,tenant.last_name,tenant.occupancy_status,tenant.contact_number,tenant.archive_status from tenant inner join contract on tenant.tenant_id = contract.tenant_id where tenant.occupancy_status = false;"
+    const query = "select tenant.tenant_id, tenant.first_name, tenant.last_name, contract.contract_id from tenant inner join contract on tenant.tenant_id = contract.tenant_id where tenant.occupancy_status = false;"
     const [data] = await connection.query(query);
     connection.release();
     res.status(200).json(data);

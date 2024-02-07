@@ -46,9 +46,14 @@ exports.assignRoom = [
             const roomValues = ["occupied", isFull, occupantCount, roomId];
             await connection.execute(roomQuery, roomValues);
 
+            const [tenantList] = await connection.query("select tenant.tenant_id, tenant.first_name, tenant.last_name, contract.contract_id from tenant inner join contract on tenant.tenant_id = contract.tenant_id where tenant.occupancy_status = false;");
+            const [roomList] = await connection.query("select * from room");
+
             await connection.commit();
             res.status(200).json({
-                "message": "assign tenant success"
+                "message": "assign tenant success",
+                "tenantList": tenantList,
+                "roomList": roomList,
             });
         } catch (error) {
             await connection.rollback();
