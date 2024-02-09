@@ -7,4 +7,6 @@ const contractController = require("../controllers/contractController");
 
 router.post('/', contractController.newContract);
 
+router.post('/:contractId/necessities', contractController.newNecessity);
+
 module.exports = router;
