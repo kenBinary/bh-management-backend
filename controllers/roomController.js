@@ -14,14 +14,14 @@ exports.getRooms = asyncHandler(async (req, res, next) => {
 });
 
 exports.assignRoom = [
-    param("roomId").isAlphanumeric().escape().trim().isLength({ min: 1 }),
+    param("room_number").isAlphanumeric().escape().trim().isLength({ min: 1 }),
     body("tenantId").isAlphanumeric().escape().trim().isLength({ min: 1 }),
     body("contractId").isAlphanumeric().escape().trim().isLength({ min: 1 }),
     asyncHandler(async (req, res, next) => {
         const connection = await pool.getConnection();
         try {
             await connection.beginTransaction();
-            const { roomId } = req.params;
+            const { room_number } = req.params;
             const { tenantId, contractId } = req.body;
 
             const tenantQuery = "update tenant set occupancy_status = true where tenant_id = ?";
@@ -29,11 +29,11 @@ exports.assignRoom = [
             await connection.execute(tenantQuery, tenantValues);
 
             const contractQuery = "update contract set room_number = ? where tenant_id = ? and contract_id = ?";
-            const contractValues = [roomId, tenantId, contractId];
+            const contractValues = [room_number, tenantId, contractId];
             await connection.execute(contractQuery, contractValues);
 
             const roomStatusQuery = "select headcount, occupant_count, room_type from room where room_number = ?"
-            const roomStatusValues = [roomId];
+            const roomStatusValues = [room_number];
             const [roomDetail] = await connection.execute(roomStatusQuery, roomStatusValues);
             let isFull = null
             let occupantCount = null;
@@ -43,7 +43,7 @@ exports.assignRoom = [
             }
 
             const roomQuery = "update room set room_status = ?, is_full = ?, occupant_count = ? where room_number = ? ";
-            const roomValues = ["occupied", isFull, occupantCount, roomId];
+            const roomValues = ["occupied", isFull, occupantCount, room_number];
             await connection.execute(roomQuery, roomValues);
 
             const [tenantList] = await connection.query("select tenant.tenant_id, tenant.first_name, tenant.last_name, contract.contract_id from tenant inner join contract on tenant.tenant_id = contract.tenant_id where tenant.occupancy_status = false;");
@@ -68,14 +68,14 @@ exports.assignRoom = [
 ];
 
 exports.freeRoom = [
-    param("roomId").isAlphanumeric().escape().trim().isLength({ min: 1 }),
+    param("room_number").isAlphanumeric().escape().trim().isLength({ min: 1 }),
     body("tenantId").isAlphanumeric().escape().trim().isLength({ min: 1 }),
     body("contractId").isAlphanumeric().escape().trim().isLength({ min: 1 }),
     asyncHandler(async (req, res, next) => {
         const connection = await pool.getConnection();
         try {
             await connection.beginTransaction();
-            const { roomId } = req.params;
+            const { room_number } = req.params;
             const { tenantId, contractId } = req.body;
 
             const tenantQuery = "update tenant set occupancy_status = false where tenant_id = ?";
@@ -87,7 +87,7 @@ exports.freeRoom = [
             await connection.execute(contractQuery, contractValues);
 
             const roomStatusQuery = "select headcount, occupant_count, room_type from room where room_number = ?"
-            const roomStatusValues = [roomId];
+            const roomStatusValues = [room_number];
             const [roomDetail] = await connection.execute(roomStatusQuery, roomStatusValues);
             let isFull = null
             let occupantCount = null;
@@ -98,11 +98,11 @@ exports.freeRoom = [
 
             const isOccupied = (occupantCount > 0) ? "occupied" : "vacant";
             const roomQuery = "update room set room_status = ?, is_full = ?, occupant_count = ? where room_number = ? ";
-            const roomValues = [isOccupied, isFull, occupantCount, roomId];
+            const roomValues = [isOccupied, isFull, occupantCount, room_number];
             await connection.execute(roomQuery, roomValues);
 
             const tenantListQuery = "select tenant.tenant_id, tenant.first_name, tenant.last_name, contract.contract_id from tenant inner join contract on contract.tenant_id = tenant.tenant_id inner join room on contract.room_number = room.room_number where room.room_number = ?";
-            const tenantListValues = [roomId];
+            const tenantListValues = [room_number];
             const [tenantList] = await connection.execute(tenantListQuery, tenantListValues);
             const [roomList] = await connection.query("select * from room");
 

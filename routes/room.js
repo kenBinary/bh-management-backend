@@ -4,10 +4,11 @@ const roomController = require("../controllers/roomController");
 
 router.get("/", roomController.getRooms);
 
-router.get("/:room_number/tenant", roomController.getTenantsFromRoom);
+router.get("/:room_number/tenants", roomController.getTenantsFromRoom);
 
-router.post("/:roomId/assign-room", roomController.assignRoom);
+router.post("/:room_number/tenants", roomController.assignRoom);
 
-router.put("/:roomId/remove-room", roomController.freeRoom);
+// fix route to include tenantID as param and not body
+router.put("/:room_number/tenants", roomController.freeRoom);
 
 module.exports = router;
