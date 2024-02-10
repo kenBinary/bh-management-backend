@@ -21,6 +21,27 @@ exports.newContract = asyncHandler(async (req, res, next) => {
     });
 });
 
+exports.getNecessities = asyncHandler(async (req, res, next) => {
+    const { contractId } = req.params;
+    const connection = await pool.getConnection();
+    try {
+        const query = "select necessity.necessity_id, necessity.necessity_type, necessity.necessity_fee from necessity inner join necessity_fee on necessity.necessity_id = necessity_fee.necessity_id inner join necessity_bill on necessity_fee.necessity_bill_id = necessity_bill.necessity_bill_id inner join contract on necessity_bill.contract_id = contract.contract_id where contract.contract_id = ? order by necessity.necessity_type;";
+        const values = [contractId];
+        const [necessityList] = await connection.execute(query, values);
+        res.status(200).json({
+            "message": "retrieve list success",
+            "data": necessityList,
+        });
+    } catch (error) {
+        res.status(400).json({
+            "message": "An error has occured retrieving the list",
+        });
+    } finally {
+        connection.release();
+
+    }
+});
+
 exports.newNecessity = [
     param("contractId").isAlphanumeric().trim().escape().isLength({ min: 1 }),
     body("necessityFee").isInt().trim().escape().isLength({ min: 1 }),
