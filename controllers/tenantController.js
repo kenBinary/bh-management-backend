@@ -284,3 +284,64 @@ exports.getLeaseDetails = asyncHandler(async (req, res, next) => {
         connection.release();
     }
 });
+
+exports.getCollectionDetails = asyncHandler(async (req, res, next) => {
+    const { tenantid } = req.params;
+    const connection = await pool.getConnection();
+
+    let collectionDetails = {
+        currentInvoices: 0,
+        pastDueInvoices: 0,
+        totalRent: 0,
+        totalNecessity: 0,
+        total: 0,
+    }
+
+    try {
+        // current invoices
+        const roomInvoice = "select count(room_utility_bill.bill_due) as count from contract  inner join room_utility_bill on contract.contract_id = room_utility_bill.contract_id where contract.tenant_id = ? and month(room_utility_bill.bill_due) = month(current_date()) + 1;";
+        const roomInvoiceValues = [tenantid];
+        const [rInvoice] = await connection.execute(roomInvoice, roomInvoiceValues);
+
+        const necessityInvoice = "select count(necessity_bill.bill_due) as count from contract  inner join necessity_bill on contract.contract_id = necessity_bill.contract_id where contract.tenant_id = ? and month(necessity_bill.bill_due) = month(current_date()) + 1;";
+        const necessityInvoiceValues = [tenantid];
+        const [nInvoice] = await connection.execute(necessityInvoice, necessityInvoiceValues);
+        collectionDetails.currentInvoices = rInvoice[0].count + nInvoice[0].count;
+
+        // past due invoices
+        const dueRoomInvoice = "select count(room_utility_bill.bill_due) as count from room_utility_bill inner join contract on contract.contract_id = room_utility_bill.contract_id where contract.tenant_id = ? and room_utility_bill.date_paid is null and current_date() > room_utility_bill.bill_due;";
+        const dueRoomInvoiceValues = [tenantid];
+        const [dRInvoice] = await connection.execute(dueRoomInvoice, dueRoomInvoiceValues);
+
+        const dNecessityInvoice = "select count(necessity_bill.bill_due) as count from necessity_bill inner join contract on contract.contract_id = necessity_bill.contract_id  where contract.tenant_id = ? and necessity_bill.date_paid is null and current_date() > necessity_bill.bill_due;";
+        const dNecessityInvoiceValues = [tenantid];
+        const [dNInvoice] = await connection.execute(dNecessityInvoice, dNecessityInvoiceValues);
+        collectionDetails.pastDueInvoices = dRInvoice[0].count + dNInvoice[0].count;
+
+        // total room fee collected
+        const totalRentQuery = "select sum(room_utility_bill.total_bill) as total_rent from tenant inner join contract on tenant.tenant_id = contract.tenant_id inner join room_utility_bill on contract.contract_id = room_utility_bill.contract_id where tenant.tenant_id = ? and room_utility_bill.payment_status = true;";
+        const totalRentvalues = [tenantid];
+        const [totalRentResult] = await connection.execute(totalRentQuery, totalRentvalues);
+        collectionDetails.totalRent = (totalRentResult[0].total_rent) ? totalRentResult[0].total_rent : 0;
+
+        // // total necessity fee collected
+        const totalNecessityQuery = "select sum(necessity_bill.total_bill) as total_necessity from tenant inner join contract on tenant.tenant_id = contract.tenant_id inner join necessity_bill on contract.contract_id = necessity_bill.contract_id where tenant.tenant_id = ? and necessity_bill.payment_status = true; ";
+        const totalNecessityValues = [tenantid];
+        const [totalNecessityResult] = await connection.execute(totalNecessityQuery, totalNecessityValues);
+        collectionDetails.totalNecessity = (totalNecessityResult[0].total_necessity) ? totalNecessityResult[0].total_necessity : 0;
+
+        // total
+        collectionDetails.total = collectionDetails.totalRent + collectionDetails.totalNecessity;
+
+        res.status(200).json({
+            message: "success",
+            collectionDetails: collectionDetails,
+        });
+    } catch (error) {
+        res.status(400).json({
+            message: "failed to retrieve data",
+        });
+    } finally {
+        connection.release();
+    }
+});

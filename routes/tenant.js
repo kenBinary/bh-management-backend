@@ -17,6 +17,8 @@ router.get("/:tenantid/images", tenantController.getTenantImage);
 
 router.get("/:tenantid/lease-details", tenantController.getLeaseDetails);
 
+router.get("/:tenantid/collection-details", tenantController.getCollectionDetails);
+
 router.get("/:tenantid/necessity", tenantController.getTenantNecessity);
 
 router.post("/:tenantid/necessity", tenantController.newTenantNecessity);
