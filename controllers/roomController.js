@@ -59,7 +59,7 @@ exports.assignRoom = [
             }, 0));
 
             // check if there is a bill for contract
-            const nextMonth = format(addMonths(new Date(), 1), "yyyy-05-MM");
+            const nextMonth = format(addMonths(new Date(), 1), "yyyy-MM-05");
             const existingBill = "select * from room_utility_bill where contract_id = ? and bill_due = ?;";
             const existingBillValues = [contractId, nextMonth];
             const [bill] = await connection.execute(existingBill, existingBillValues);
