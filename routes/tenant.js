@@ -13,6 +13,8 @@ router.get("/:tenantid", tenantController.getTenant);
 
 router.put("/:tenantid", tenantController.editTenant);
 
+router.get("/:tenantid/images", tenantController.getTenantImage);
+
 router.get("/:tenantid/necessity", tenantController.getTenantNecessity);
 
 router.post("/:tenantid/necessity", tenantController.newTenantNecessity);

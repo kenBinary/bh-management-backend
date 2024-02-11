@@ -227,3 +227,19 @@ exports.editContract = asyncHandler(async (req, res, next) => {
         "message": "contract edited"
     });
 });
+
+exports.getTenantImage = asyncHandler(async (req, res, next) => {
+    const { tenantid } = req.params;
+    const connection = await pool.getConnection();
+    const query = "SELECT tenant_image from tenant where tenant_id = ?";
+    const values = [tenantid];
+    const [results] = await connection.execute(query, values);
+    if (results.length > 0 && results[0].tenant_image) {
+        res.status(200).sendFile(path.join(__dirname, '../', results[0].tenant_image));
+    } else {
+        res.status(400).json({
+            message: "no image for tenant",
+        });
+    }
+    connection.release();
+});
