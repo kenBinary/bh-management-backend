@@ -10,8 +10,20 @@ const pool = require('./models/dbPool')
 const asyncHandler = require('express-async-handler')
 const cors = require('cors');
 const { body, validationResult, param } = require("express-validator");
+const bodyParser = require('body-parser');
 
 
+// global middleware
+app.use((req, res, next) => {
+  res.set({
+    'Access-Control-Allow-Origin': 'http://localhost:5173',
+    'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE',
+    "Access-Control-Allow-Headers": "*"
+  });
+  next();
+});
+app.use(bodyParser.json({ limit: '10mb' }));
+app.use(bodyParser.urlencoded({ extended: true, limit: '10mb' }));
 app.use(logger('dev'));
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
@@ -20,16 +32,7 @@ app.use(express.static(path.join(__dirname, 'public')));
 app.use(express.json());
 app.set('view engine', 'ejs');
 
-// global middleware
-// app.use((req, res, next) => {
-//   res.set({
-//     'Access-Control-Allow-Origin': '*',
-//     'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE',
-//     "Access-Control-Allow-Headers": "*"
-//   });
-//   next();
-// });
-app.use(cors());
+
 
 // remove this
 // app.use(function (req, res, next) { setTimeout(next, 1000) });
