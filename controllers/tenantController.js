@@ -5,6 +5,41 @@ const { body, param } = require("express-validator");
 const ShortUniqueId = require("short-unique-id");
 const uid = new ShortUniqueId({ length: 10 });
 const { format } = require("date-fns");
+const path = require('path');
+const multer = require('multer')
+
+const storage = multer.diskStorage({
+    destination: (req, file, cb) => {
+        cb(null, "assets/images");
+    },
+    filename: (req, file, cb) => {
+        const fileExtension = path.extname(file.originalname).toLowerCase();
+        cb(null, uid.rnd() + fileExtension)
+    },
+});
+const fileFilter = (req, file, cb) => {
+    const allowedExtensions = ['.jpg', '.jpeg', '.png', '.svg'];
+    const fileExtension = path.extname(file.originalname).toLowerCase();
+    if (allowedExtensions.includes(fileExtension)) {
+        cb(null, true);
+    } else {
+        cb(new Error('Invalid file type. Only jpg, jpeg, png, and svg are allowed.'), false);
+    }
+}
+const upload = multer({
+    storage: storage,
+    fileFilter: fileFilter
+})
+
+exports.sendFile = [
+    upload.single('image'),
+    asyncHandler(async (req, res, next) => {
+        const { path } = req.file;
+        res.status(200).json({
+            "message": "success",
+        });
+    })
+];
 
 exports.getTenants = asyncHandler(async (req, res, next) => {
     let connection = await pool.getConnection();
@@ -17,10 +52,17 @@ exports.newTenant = [
     body("firstName").isAlphanumeric().trim().escape().isLength({ min: 1 }),
     body("lastName").isAlphanumeric().trim().escape().isLength({ min: 1 }),
     body("contactNum").isAlphanumeric().trim().escape().isLength({ min: 1 }),
+    body("email").isAlphanumeric().trim().escape().isLength({ min: 1 }),
+    upload.single('tenantImage'),
     asyncHandler(async (req, res, next) => {
         const { firstName, lastName, contactNum } = req.body;
+        let { email } = req.body;
+        const { path: imagePath } = req.file;
+        if (!email) {
+            email = null;
+        }
+
         const tenantId = uid.rnd();
-        const arguments = [tenantId, firstName, lastName, contactNum];
         const data = {
             tenant_id: tenantId,
             first_name: firstName,
@@ -28,10 +70,16 @@ exports.newTenant = [
             occupancy_status: 0,
             contact_number: contactNum,
             archive_status: 0,
+            email: email,
+            tenant_image: imagePath,
         };
+
         const connection = await pool.getConnection();
-        await connection.execute("INSERT INTO `tenant` (`tenant_id`,`first_name`, `last_name`, `contact_number`) VALUES (?,?,?,?)", arguments);
+        const query = "INSERT INTO `tenant` (`tenant_id`,`first_name`, `last_name`, `contact_number`,`email`,`tenant_image`) VALUES (?,?,?,?,?,?)";
+        const values = [tenantId, firstName, lastName, contactNum, email, imagePath];
+        await connection.execute(query, values);
         connection.release();
+
         res.status(200).json({
             "message": "Tenant Created",
             "data": data,
