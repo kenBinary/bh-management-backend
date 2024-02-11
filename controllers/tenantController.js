@@ -7,6 +7,7 @@ const uid = new ShortUniqueId({ length: 10 });
 const { format } = require("date-fns");
 const path = require('path');
 const multer = require('multer')
+const fs = require('fs');
 
 const storage = multer.diskStorage({
     destination: (req, file, cb) => {
@@ -100,24 +101,44 @@ exports.editTenant = [
     body("newFirstName").isAlphanumeric().trim().escape().isLength({ min: 1 }),
     body("newLastName").isAlphanumeric().trim().escape().isLength({ min: 1 }),
     body("newContactNum").isAlphanumeric().trim().escape().isLength({ min: 1 }),
+    body("newEmail").isAlphanumeric().trim().escape().isLength({ min: 1 }),
+    upload.single('newImage'),
     asyncHandler(async (req, res, next) => {
         const { tenantid } = req.params;
         const { newFirstName, newLastName, newContactNum } = req.body;
-        const values = [newFirstName, newLastName, newContactNum, tenantid];
+        let { newEmail } = req.body;
+        if (!newEmail) {
+            newEmail = null;
+        }
 
         const data = {
             tenant_id: tenantid,
             first_name: newFirstName,
             last_name: newLastName,
             contact_number: newContactNum,
+            email: newEmail,
+            tenant_image: req.file.path
         };
 
+
         const connection = await pool.getConnection();
-        await connection.execute("UPDATE tenant SET first_name = ?, last_name = ?, contact_number = ? WHERE tenant_id = ?;", values);
+        const [previousImage] = await connection.execute("select tenant_image from tenant where tenant_id = ?", [tenantid]);
+
+        let message = "record updated";
+        if (previousImage[0].tenant_image) {
+            try {
+                fs.unlinkSync(previousImage[0].tenant_image);
+            } catch (err) {
+                message = "record updated but failed to delete image";
+            }
+        }
+        const query = "UPDATE tenant SET first_name = ?, last_name = ?, contact_number = ?, email= ?, tenant_image = ? WHERE tenant_id = ?;";
+        const values = [newFirstName, newLastName, newContactNum, newEmail, req.file.path, tenantid];
+        await connection.execute(query, values);
         connection.release();
 
         res.status(200).json({
-            "message": "record updated",
+            "message": message,
             "data": data,
         });
     })
