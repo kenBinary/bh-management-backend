@@ -264,3 +264,23 @@ exports.getTenantImage = asyncHandler(async (req, res, next) => {
     }
     connection.release();
 });
+
+exports.getLeaseDetails = asyncHandler(async (req, res, next) => {
+    const { tenantid } = req.params;
+    const query = "select room.room_number, room_utility_bill.total_bill, contract.start_date, contract.end_date from contract inner join tenant on tenant.tenant_id = contract.tenant_id inner join room_utility_bill on contract.contract_id = room_utility_bill.contract_id inner join room on contract.room_number = room.room_number where tenant.tenant_id = ?;";
+    const values = [tenantid];
+    const connection = await pool.getConnection();
+    try {
+        const [data] = await connection.execute(query, values);
+        res.status(200).json({
+            message: "success",
+            data: data,
+        });
+    } catch (error) {
+        res.status(400).json({
+            message: "failed to retrieve data",
+        });
+    } finally {
+        connection.release();
+    }
+});
