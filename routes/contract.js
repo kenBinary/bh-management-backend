@@ -11,4 +11,6 @@ router.get('/:contractId/necessities', contractController.getNecessities);
 
 router.post('/:contractId/necessities', contractController.newNecessity);
 
+router.get('/:contractId/necessity-bills', contractController.getNecessityBills);
+
 module.exports = router;
