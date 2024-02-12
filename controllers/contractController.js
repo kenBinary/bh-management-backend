@@ -136,3 +136,23 @@ exports.getNecessityBills = asyncHandler(async (req, res, next) => {
         connection.release();
     }
 });
+
+exports.getRoomUtilityBills = asyncHandler(async (req, res, next) => {
+    const { contractId } = req.params;
+    const connection = await pool.getConnection();
+    try {
+        const query = "select contract.room_number, room_utility_bill.total_bill, room_utility_bill.bill_due, room_utility_bill.date_paid, room_utility_bill.payment_status from room_utility_bill inner join contract on room_utility_bill.contract_id = contract.contract_id where room_utility_bill.payment_status = false and contract.contract_id = ?;";
+        const values = [contractId];
+        const [roomUtilityBills] = await connection.execute(query, values);
+        res.status(200).json({
+            "message": "retrieve bills success",
+            "data": roomUtilityBills,
+        });
+    } catch (error) {
+        res.status(400).json({
+            "message": "An error has occured retrieving the bills",
+        });
+    } finally {
+        connection.release();
+    }
+});
