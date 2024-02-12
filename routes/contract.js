@@ -15,4 +15,7 @@ router.get('/:contractId/necessity-bills', contractController.getNecessityBills)
 
 router.get('/:contractId/room-utility-bills', contractController.getRoomUtilityBills);
 
+router.post('/:contractId/room-utility-bills/:billId', contractController.payRoomUtilityBill);
+
+
 module.exports = router;

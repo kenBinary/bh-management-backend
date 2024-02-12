@@ -156,3 +156,88 @@ exports.getRoomUtilityBills = asyncHandler(async (req, res, next) => {
         connection.release();
     }
 });
+
+
+exports.payRoomUtilityBill = [
+    param("contractId").isAlphanumeric().trim().escape().isLength({ min: 1 }),
+    param("billId").isAlphanumeric().trim().escape().isLength({ min: 1 }),
+    body("roomNumber").isInt().trim().escape().isLength({ min: 1 }),
+    body("previousDue").isAlphanumeric().trim().escape().isLength({ min: 1 }),
+    asyncHandler(async (req, res, next) => {
+        const { contractId, billId } = req.params;
+        const { roomNumber, previousDue } = req.body;
+        const connection = await pool.getConnection();
+        try {
+            await connection.beginTransaction();
+
+
+            const currentDate = format(new Date(), "yyyy-MM-dd");
+            const newBillDue = format(addMonths(new Date(previousDue), 1), "yyyy-MM-05");
+
+            // update room bill
+            const qRoomBIll = "update room_utility_bill set date_paid = ? , payment_status = ? where room_utility_bill_id = ?;";
+            const vRoomBIll = [currentDate, true, billId];
+            await connection.execute(qRoomBIll, vRoomBIll);
+
+
+            // update room fee
+            const qRoomFee = "update room_fee set is_paid = ? where room_utility_bill_id = ?;";
+            const vRoomFee = [true, billId];
+            await connection.execute(qRoomFee, vRoomFee);
+
+            // update utility fee
+            const qUtiliyFee = "update utility_fee set is_paid = ? where room_utility_bill_id = ?;";
+            const vUtilityFee = [true, billId];
+            await connection.execute(qUtiliyFee, vUtilityFee);
+
+
+            // gets the fee for room and utilities
+            const [roomFee] = await connection.execute("select room_fee  from room where room_number = ?", [roomNumber]);
+            const [utilityFee] = await connection.query("select utility_fee, utility_id from utility");
+
+
+            let newBillId = uid.rnd();
+            const newTotalBill = Number(roomFee[0].room_fee) + Number(utilityFee.reduce((accumulator, currentValue) => {
+                return accumulator + currentValue.utility_fee;
+            }, 0));
+
+            // create new room bill
+            const qNewBill = "insert into room_utility_bill (room_utility_bill_id, contract_id, bill_due, payment_status, total_bill) values(?,?,?,?,?);";
+            const vNewBill = [newBillId, contractId, newBillDue, false, newTotalBill];
+            await connection.execute(qNewBill, vNewBill);
+
+            // Creates room fee
+            const roomFeeId = uid.rnd();
+            const newNecessityFee = "insert into room_fee values(?,?,?,?);";
+            const newNecessityFeeValues = [roomFeeId, newBillId, roomNumber, false];
+            await connection.execute(newNecessityFee, newNecessityFeeValues);
+
+            // creates utilitFees
+            utilityFee.forEach(async (e) => {
+                const utilityFeeId = uid.rnd();
+                const newUtilityFee = "insert into utility_fee values(?,?,?,?);";
+                const newUtilityFeeValues = [utilityFeeId, newBillId, e.utility_id, false];
+                await connection.execute(newUtilityFee, newUtilityFeeValues);
+            });
+
+            // get new room bills
+            const qNewRoomBills = "select contract.room_number, room_utility_bill.room_utility_bill_id, room_utility_bill.total_bill, room_utility_bill.bill_due, room_utility_bill.date_paid, room_utility_bill.payment_status from room_utility_bill inner join contract on room_utility_bill.contract_id = contract.contract_id where room_utility_bill.payment_status = false and contract.contract_id = ?;";
+            const vNewRoomBills = [contractId];
+            const [newRoomUtilityBills] = await connection.execute(qNewRoomBills, vNewRoomBills);
+
+            await connection.commit();
+            res.status(200).json({
+                "message": "pay bill success",
+                "data": newRoomUtilityBills,
+            });
+        } catch (error) {
+            await connection.rollback();
+            console.log(error);
+            res.status(400).json({
+                "message": "failed to pay bill",
+            });
+        } finally {
+            connection.release();
+        }
+    })
+];
