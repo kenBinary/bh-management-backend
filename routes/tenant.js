@@ -9,6 +9,8 @@ router.post('/', tenantController.newTenant);
 
 router.get("/unassigned", tenantController.getUnassignedTenants);
 
+router.get("/assigned", tenantController.getAssignedTenants);
+
 router.get("/:tenantid", tenantController.getTenant);
 
 router.put("/:tenantid", tenantController.editTenant);

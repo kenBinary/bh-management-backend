@@ -152,6 +152,24 @@ exports.getUnassignedTenants = asyncHandler(async (req, res, next) => {
     res.status(200).json(data);
 });
 
+exports.getAssignedTenants = asyncHandler(async (req, res, next) => {
+    const connection = await pool.getConnection();
+    try {
+        const query = "select tenant.tenant_id, contract.contract_id, tenant.first_name, tenant.last_name from tenant inner join contract on tenant.tenant_id = contract.tenant_id where contract.room_number is not null and contract.room_number != 0;"
+        const [data] = await connection.query(query);
+        res.status(200).json({
+            message: "tenant retrieve success",
+            assignedTenants: data,
+        });
+    } catch (error) {
+        res.status(400).json({
+            message: "failed to get tenants",
+        });
+    } finally {
+        connection.release();
+    }
+});
+
 exports.addNecessity = [
     body("newId").isAlphanumeric().trim().escape().isLength({ min: 1 }),
     body("newFee").isInt().trim().escape().isLength({ min: 1 }),
