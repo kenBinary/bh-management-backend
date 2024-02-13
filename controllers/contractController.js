@@ -25,7 +25,7 @@ exports.getNecessities = asyncHandler(async (req, res, next) => {
     const { contractId } = req.params;
     const connection = await pool.getConnection();
     try {
-        const query = "select necessity.necessity_id, necessity.necessity_type, necessity.necessity_fee from necessity inner join necessity_fee on necessity.necessity_id = necessity_fee.necessity_id inner join necessity_bill on necessity_fee.necessity_bill_id = necessity_bill.necessity_bill_id inner join contract on necessity_bill.contract_id = contract.contract_id where contract.contract_id = ? order by necessity.necessity_type;";
+        const query = "select distinct necessity.necessity_id, necessity.necessity_type, necessity.necessity_fee from necessity inner join necessity_fee on necessity.necessity_id = necessity_fee.necessity_id inner join necessity_bill on necessity_fee.necessity_bill_id = necessity_bill.necessity_bill_id inner join contract on necessity_bill.contract_id = contract.contract_id where contract.contract_id = ? order by necessity.necessity_type;";
         const values = [contractId];
         const [necessityList] = await connection.execute(query, values);
         res.status(200).json({
@@ -61,7 +61,7 @@ exports.newNecessity = [
 
             // check if there is a bill for contract
             const nextMonth = format(addMonths(new Date(), 1), "yyyy-MM-05");
-            const existingBill = "select * from necessity_bill where contract_id = ? and bill_due = ?";
+            const existingBill = "select * from necessity_bill where contract_id = ? and bill_due = ? and payment_status = false";
             const existingBillValues = [contractId, nextMonth];
             const [bill] = await connection.execute(existingBill, existingBillValues);
 
@@ -96,7 +96,7 @@ exports.newNecessity = [
             }
 
             // get updated necessities
-            const uNecessities = "select necessity.necessity_id, necessity.necessity_type, necessity.necessity_fee from necessity inner join necessity_fee on necessity.necessity_id = necessity_fee.necessity_id inner join necessity_bill on necessity_fee.necessity_bill_id = necessity_bill.necessity_bill_id inner join contract on necessity_bill.contract_id = contract.contract_id where contract.contract_id = ? order by necessity.necessity_type;";
+            const uNecessities = "select distinct necessity.necessity_id, necessity.necessity_type, necessity.necessity_fee from necessity inner join necessity_fee on necessity.necessity_id = necessity_fee.necessity_id inner join necessity_bill on necessity_fee.necessity_bill_id = necessity_bill.necessity_bill_id inner join contract on necessity_bill.contract_id = contract.contract_id where contract.contract_id = ? order by necessity.necessity_type;";
             const uNecessityValues = [contractId];
             const [necessityList] = await connection.execute(uNecessities, uNecessityValues);
 
@@ -121,7 +121,7 @@ exports.getNecessityBills = asyncHandler(async (req, res, next) => {
     const { contractId } = req.params;
     const connection = await pool.getConnection();
     try {
-        const query = "select necessity_bill.total_bill, necessity_bill.bill_due, necessity_bill.date_paid, necessity_bill.payment_status from necessity_bill inner join contract on necessity_bill.contract_id = contract.contract_id where necessity_bill.payment_status = false and contract.contract_id = ?;";
+        const query = "select necessity_bill.necessity_bill_id, necessity_bill.total_bill, necessity_bill.bill_due, necessity_bill.date_paid, necessity_bill.payment_status from necessity_bill inner join contract on necessity_bill.contract_id = contract.contract_id where necessity_bill.payment_status = false and contract.contract_id = ?;";
         const values = [contractId];
         const [necessityBills] = await connection.execute(query, values);
         res.status(200).json({
@@ -229,6 +229,105 @@ exports.payRoomUtilityBill = [
             res.status(200).json({
                 "message": "pay bill success",
                 "data": newRoomUtilityBills,
+            });
+        } catch (error) {
+            await connection.rollback();
+            console.log(error);
+            res.status(400).json({
+                "message": "failed to pay bill",
+            });
+        } finally {
+            connection.release();
+        }
+    })
+];
+
+exports.payNecessityBill = [
+    param("contractId").isAlphanumeric().trim().escape().isLength({ min: 1 }),
+    param("billId").isAlphanumeric().trim().escape().isLength({ min: 1 }),
+    body("previousDue").isAlphanumeric().trim().escape().isLength({ min: 1 }),
+    asyncHandler(async (req, res, next) => {
+        const { contractId, billId } = req.params;
+        const { previousDue, paidNecessities } = req.body;
+        const connection = await pool.getConnection();
+        try {
+            await connection.beginTransaction();
+
+
+            const currentDate = format(new Date(), "yyyy-MM-dd");
+            const newBillDue = format(addMonths(new Date(previousDue), 1), "yyyy-MM-05");
+
+            // get necessity fees for bill
+            const qBillNecessityFees = "select * from necessity_fee where necessity_bill_id = ?";
+            const vBillNecessityFees = [billId];
+            const [billNecessityFees] = await connection.execute(qBillNecessityFees, vBillNecessityFees);
+
+            // update necessity fees
+            billNecessityFees.forEach(async (necessityFee) => {
+                if (necessityFee.necessity_id in paidNecessities) {
+                    const isPaid = paidNecessities[necessityFee.necessity_id];
+                    const query = "update necessity_fee set is_paid = ? where necessity_fee_id = ?;";
+                    const values = [isPaid, necessityFee.necessity_fee_id];
+                    await connection.execute(query, values);
+                }
+            });
+
+            // check if there are still any necessity fees that are unpaid
+            const qUnpaidFees = "select * from necessity_fee where necessity_bill_id = ? and is_paid = false;";
+            const vUnpaidFees = [billId];
+            const [unpaidFees] = await connection.execute(qUnpaidFees, vUnpaidFees);
+
+            // // remove necessities and their fees that are unpaid
+            unpaidFees.forEach(async (necessity) => {
+                console.log(necessity);
+                const qUnpaidFees = "delete from necessity_fee where necessity_bill_id = ? and is_paid = false;"
+                const vUnpaidFees = [necessity.necessity_bill_id];
+                await connection.execute(qUnpaidFees, vUnpaidFees);
+
+                const qUnpaidNecessity = "delete from necessity where necessity_id = ?";
+                const vUnpaidNecessity = [necessity.necessity_id];
+                await connection.execute(qUnpaidNecessity, vUnpaidNecessity);
+            });
+
+            // update necessity bill
+            const qNecessityBill = "update necessity_bill set date_paid = ? , payment_status = ? where necessity_bill_id = ?;";
+            const vNecessityBill = [currentDate, true, billId];
+            await connection.execute(qNecessityBill, vNecessityBill);
+
+            // gets updated necessities of tenant
+            const qUpdatedNecessities = "select necessity.necessity_id, necessity.necessity_type, necessity.necessity_fee from necessity inner join necessity_fee on necessity.necessity_id = necessity_fee.necessity_id inner join necessity_bill on necessity_fee.necessity_bill_id = necessity_bill.necessity_bill_id inner join contract on necessity_bill.contract_id = contract.contract_id where contract.contract_id = ? order by necessity.necessity_type;";
+            const vUpdatedNecessities = [contractId];
+            const [updatedNecessites] = await connection.execute(qUpdatedNecessities, vUpdatedNecessities);
+
+            // new total of necessity
+            const newNecessityTotal = updatedNecessites.reduce((accumulator, currentValue) => {
+                return accumulator + Number(currentValue.necessity_fee);
+            }, 0);
+
+
+            // create new bill
+            const newBillId = uid.rnd();;
+            const createBill = "insert into necessity_bill (necessity_bill_id,contract_id,bill_due,payment_status,total_bill) values(?,?,?,?,?);";
+            const createBillValues = [newBillId, contractId, newBillDue, false, Number(newNecessityTotal)];
+            await connection.execute(createBill, createBillValues);
+
+            // create new fees for paid necessitites
+            updatedNecessites.forEach(async (necessity) => {
+                const necessityFeeId = uid.rnd();
+                const qNewNecessityFee = "insert into necessity_fee values(?,?,?,?);";
+                const vNewNecessityFeeValues = [necessityFeeId, newBillId, necessity.necessity_id, false];
+                await connection.execute(qNewNecessityFee, vNewNecessityFeeValues);
+            });
+
+            // return new necessity bill
+            const query = "select necessity_bill.total_bill, necessity_bill.bill_due, necessity_bill.date_paid, necessity_bill.payment_status from necessity_bill inner join contract on necessity_bill.contract_id = contract.contract_id where necessity_bill.payment_status = false and contract.contract_id = ?;";
+            const values = [contractId];
+            const [necessityBills] = await connection.execute(query, values);
+
+            await connection.commit();
+            res.status(200).json({
+                "message": "pay bill success",
+                "data": necessityBills,
             });
         } catch (error) {
             await connection.rollback();
