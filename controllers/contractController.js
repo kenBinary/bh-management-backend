@@ -295,7 +295,7 @@ exports.payNecessityBill = [
             await connection.execute(qNecessityBill, vNecessityBill);
 
             // gets updated necessities of tenant
-            const qUpdatedNecessities = "select necessity.necessity_id, necessity.necessity_type, necessity.necessity_fee from necessity inner join necessity_fee on necessity.necessity_id = necessity_fee.necessity_id inner join necessity_bill on necessity_fee.necessity_bill_id = necessity_bill.necessity_bill_id inner join contract on necessity_bill.contract_id = contract.contract_id where contract.contract_id = ? order by necessity.necessity_type;";
+            const qUpdatedNecessities = "select distinct necessity.necessity_id, necessity.necessity_type, necessity.necessity_fee from necessity inner join necessity_fee on necessity.necessity_id = necessity_fee.necessity_id inner join necessity_bill on necessity_fee.necessity_bill_id = necessity_bill.necessity_bill_id inner join contract on necessity_bill.contract_id = contract.contract_id where contract.contract_id = ? order by necessity.necessity_type;";
             const vUpdatedNecessities = [contractId];
             const [updatedNecessites] = await connection.execute(qUpdatedNecessities, vUpdatedNecessities);
 
@@ -320,7 +320,7 @@ exports.payNecessityBill = [
             });
 
             // return new necessity bill
-            const query = "select necessity_bill.total_bill, necessity_bill.bill_due, necessity_bill.date_paid, necessity_bill.payment_status from necessity_bill inner join contract on necessity_bill.contract_id = contract.contract_id where necessity_bill.payment_status = false and contract.contract_id = ?;";
+            const query = "select necessity_bill.necessity_bill_id, necessity_bill.total_bill, necessity_bill.bill_due, necessity_bill.date_paid, necessity_bill.payment_status from necessity_bill inner join contract on necessity_bill.contract_id = contract.contract_id where necessity_bill.payment_status = false and contract.contract_id = ?;";
             const values = [contractId];
             const [necessityBills] = await connection.execute(query, values);
 
