@@ -43,10 +43,18 @@ exports.sendFile = [
 ];
 
 exports.getTenants = asyncHandler(async (req, res, next) => {
-    let connection = await pool.getConnection();
-    const [results] = await connection.query("SELECT * FROM tenant WHERE archive_status = false ORDER BY last_name ASC;");
-    connection.release();
-    res.json(results);
+    const connection = await pool.getConnection();
+    try {
+        const [tenantList] = await connection.query("SELECT * FROM tenant WHERE archive_status = false ORDER BY last_name ASC;");
+        res.status(200).json(tenantList);
+    } catch (error) {
+        console.error(error)
+        res.status(400).json({
+            "message": "failed to retrieve tenants"
+        });
+    } finally {
+        connection.release();
+    }
 });
 
 exports.newTenant = [
