@@ -170,7 +170,6 @@ exports.payRoomUtilityBill = [
         try {
             await connection.beginTransaction();
 
-
             const currentDate = format(new Date(), "yyyy-MM-dd");
             const newBillDue = format(addMonths(new Date(previousDue), 1), "yyyy-MM-05");
 
@@ -195,33 +194,41 @@ exports.payRoomUtilityBill = [
             const [roomFee] = await connection.execute("select room_fee  from room where room_number = ?", [roomNumber]);
             const [utilityFee] = await connection.query("select utility_fee, utility_id from utility");
 
+            // ----------------------------------- //
+            // check if there is a bill for next month
+            const qExistingBill = "select * from room_utility_bill where contract_id = ? and bill_due = ?;";
+            const vExistingBillValues = [contractId, newBillDue];
+            const [existingBill] = await connection.execute(qExistingBill, vExistingBillValues);
 
-            let newBillId = uid.rnd();
-            const newTotalBill = Number(roomFee[0].room_fee) + Number(utilityFee.reduce((accumulator, currentValue) => {
-                return accumulator + currentValue.utility_fee;
-            }, 0));
+            if (existingBill.length < 1) {
+                let newBillId = uid.rnd();
+                const newTotalBill = Number(roomFee[0].room_fee) + Number(utilityFee.reduce((accumulator, currentValue) => {
+                    return accumulator + currentValue.utility_fee;
+                }, 0));
 
-            // create new room bill
-            const qNewBill = "insert into room_utility_bill (room_utility_bill_id, contract_id, bill_due, payment_status, total_bill) values(?,?,?,?,?);";
-            const vNewBill = [newBillId, contractId, newBillDue, false, newTotalBill];
-            await connection.execute(qNewBill, vNewBill);
+                // create new room bill
+                const qNewBill = "insert into room_utility_bill (room_utility_bill_id, contract_id, bill_due, payment_status, total_bill) values(?,?,?,?,?);";
+                const vNewBill = [newBillId, contractId, newBillDue, false, newTotalBill];
+                await connection.execute(qNewBill, vNewBill);
 
-            // Creates room fee
-            const roomFeeId = uid.rnd();
-            const newNecessityFee = "insert into room_fee values(?,?,?,?);";
-            const newNecessityFeeValues = [roomFeeId, newBillId, roomNumber, false];
-            await connection.execute(newNecessityFee, newNecessityFeeValues);
+                // Creates room fee
+                const roomFeeId = uid.rnd();
+                const newNecessityFee = "insert into room_fee values(?,?,?,?);";
+                const newNecessityFeeValues = [roomFeeId, newBillId, roomNumber, false];
+                await connection.execute(newNecessityFee, newNecessityFeeValues);
 
-            // creates utilitFees
-            utilityFee.forEach(async (e) => {
-                const utilityFeeId = uid.rnd();
-                const newUtilityFee = "insert into utility_fee values(?,?,?,?);";
-                const newUtilityFeeValues = [utilityFeeId, newBillId, e.utility_id, false];
-                await connection.execute(newUtilityFee, newUtilityFeeValues);
-            });
+                // creates utilitFees
+                utilityFee.forEach(async (e) => {
+                    const utilityFeeId = uid.rnd();
+                    const newUtilityFee = "insert into utility_fee values(?,?,?,?);";
+                    const newUtilityFeeValues = [utilityFeeId, newBillId, e.utility_id, false];
+                    await connection.execute(newUtilityFee, newUtilityFeeValues);
+                });
+            }
+            // ----------------------------------- //
 
             // get new room bills
-            const qNewRoomBills = "select contract.room_number, room_utility_bill.room_utility_bill_id, room_utility_bill.total_bill, room_utility_bill.bill_due, room_utility_bill.date_paid, room_utility_bill.payment_status from room_utility_bill inner join contract on room_utility_bill.contract_id = contract.contract_id where room_utility_bill.payment_status = false and contract.contract_id = ?;";
+            const qNewRoomBills = "select contract.room_number, room_utility_bill.room_utility_bill_id, room_utility_bill.total_bill, room_utility_bill.bill_due, room_utility_bill.date_paid, room_utility_bill.payment_status from room_utility_bill inner join contract on room_utility_bill.contract_id = contract.contract_id where room_utility_bill.payment_status = false and contract.contract_id = ? order by room_utility_bill.bill_due;";
             const vNewRoomBills = [contractId];
             const [newRoomUtilityBills] = await connection.execute(qNewRoomBills, vNewRoomBills);
 
@@ -305,22 +312,32 @@ exports.payNecessityBill = [
             }, 0);
 
 
-            // create new bill
-            const newBillId = uid.rnd();;
-            const createBill = "insert into necessity_bill (necessity_bill_id,contract_id,bill_due,payment_status,total_bill) values(?,?,?,?,?);";
-            const createBillValues = [newBillId, contractId, newBillDue, false, Number(newNecessityTotal)];
-            await connection.execute(createBill, createBillValues);
+            // ----------------------------------- //
+            // check if there is a bill for next month
+            const qExistingBill = "select * from necessity_bill where contract_id = ? and bill_due = ? and payment_status = false";
+            const vExistingBillValues = [contractId, newBillDue];
+            const [existingBill] = await connection.execute(qExistingBill, vExistingBillValues);
 
-            // create new fees for paid necessitites
-            updatedNecessites.forEach(async (necessity) => {
-                const necessityFeeId = uid.rnd();
-                const qNewNecessityFee = "insert into necessity_fee values(?,?,?,?);";
-                const vNewNecessityFeeValues = [necessityFeeId, newBillId, necessity.necessity_id, false];
-                await connection.execute(qNewNecessityFee, vNewNecessityFeeValues);
-            });
+            if (existingBill.length < 1) {
+
+                // create new bill
+                const newBillId = uid.rnd();;
+                const createBill = "insert into necessity_bill (necessity_bill_id,contract_id,bill_due,payment_status,total_bill) values(?,?,?,?,?);";
+                const createBillValues = [newBillId, contractId, newBillDue, false, Number(newNecessityTotal)];
+                await connection.execute(createBill, createBillValues);
+
+                // create new fees for paid necessitites
+                updatedNecessites.forEach(async (necessity) => {
+                    const necessityFeeId = uid.rnd();
+                    const qNewNecessityFee = "insert into necessity_fee values(?,?,?,?);";
+                    const vNewNecessityFeeValues = [necessityFeeId, newBillId, necessity.necessity_id, false];
+                    await connection.execute(qNewNecessityFee, vNewNecessityFeeValues);
+                });
+            }
+            // ----------------------------------- //
 
             // return new necessity bill
-            const query = "select necessity_bill.necessity_bill_id, necessity_bill.total_bill, necessity_bill.bill_due, necessity_bill.date_paid, necessity_bill.payment_status from necessity_bill inner join contract on necessity_bill.contract_id = contract.contract_id where necessity_bill.payment_status = false and contract.contract_id = ?;";
+            const query = "select necessity_bill.necessity_bill_id, necessity_bill.total_bill, necessity_bill.bill_due, necessity_bill.date_paid, necessity_bill.payment_status from necessity_bill inner join contract on necessity_bill.contract_id = contract.contract_id where necessity_bill.payment_status = false and contract.contract_id = ? order by necessity_bill.bill_due;";
             const values = [contractId];
             const [necessityBills] = await connection.execute(query, values);
 
