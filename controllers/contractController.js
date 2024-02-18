@@ -121,7 +121,7 @@ exports.getNecessityBills = asyncHandler(async (req, res, next) => {
     const { contractId } = req.params;
     const connection = await pool.getConnection();
     try {
-        const query = "select necessity_bill.necessity_bill_id, necessity_bill.total_bill, necessity_bill.bill_due, necessity_bill.date_paid, necessity_bill.payment_status from necessity_bill inner join contract on necessity_bill.contract_id = contract.contract_id where necessity_bill.payment_status = false and contract.contract_id = ?;";
+        const query = "select necessity_bill.necessity_bill_id, necessity_bill.total_bill, necessity_bill.bill_due, necessity_bill.date_paid, necessity_bill.payment_status from necessity_bill inner join contract on necessity_bill.contract_id = contract.contract_id where necessity_bill.payment_status = false and contract.contract_id = ? order by necessity_bill.bill_due;";
         const values = [contractId];
         const [necessityBills] = await connection.execute(query, values);
         res.status(200).json({
@@ -141,7 +141,7 @@ exports.getRoomUtilityBills = asyncHandler(async (req, res, next) => {
     const { contractId } = req.params;
     const connection = await pool.getConnection();
     try {
-        const query = "select contract.room_number, room_utility_bill.room_utility_bill_id, room_utility_bill.total_bill, room_utility_bill.bill_due, room_utility_bill.date_paid, room_utility_bill.payment_status from room_utility_bill inner join contract on room_utility_bill.contract_id = contract.contract_id where room_utility_bill.payment_status = false and contract.contract_id = ?;";
+        const query = "select contract.room_number, room_utility_bill.room_utility_bill_id, room_utility_bill.total_bill, room_utility_bill.bill_due, room_utility_bill.date_paid, room_utility_bill.payment_status from room_utility_bill inner join contract on room_utility_bill.contract_id = contract.contract_id where room_utility_bill.payment_status = false and contract.contract_id = ? order by room_utility_bill.bill_due;";
         const values = [contractId];
         const [roomUtilityBills] = await connection.execute(query, values);
         res.status(200).json({
