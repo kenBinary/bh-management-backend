@@ -15,13 +15,13 @@ const storage = multer.diskStorage({
         cb(null, "assets/testImages");
     },
     filename: (req, file, cb) => {
-        const fileExtension = path.extname(file.originalname).toLowerCase();
-        cb(null, uid.rnd() + fileExtension)
+        const fileExtension = file.mimetype.split("/")[1].toLowerCase();
+        cb(null, uid.rnd() + "." + fileExtension)
     },
 });
 const fileFilter = (req, file, cb) => {
     const allowedExtensions = ['.jpg', '.jpeg', '.png', '.svg'];
-    const fileExtension = path.extname(file.originalname).toLowerCase();
+    const fileExtension = "." + file.mimetype.split("/")[1].toLowerCase();
     if (allowedExtensions.includes(fileExtension)) {
         cb(null, true);
     } else {
@@ -409,7 +409,7 @@ exports.newSignature = [
             }
             files.forEach(async (file, index) => {
                 const signatureId = uid.rnd();
-                const qNewSignature = "insert into contract_signature values (?,?,?,?,?,)";
+                const qNewSignature = "insert into contract_signature values (?,?,?,?,?)";
                 const vNewSignature = [signatureId, contractId, signatoryList[index], file.path, dateSigned];
                 await connection.execute(qNewSignature, vNewSignature);
             });
