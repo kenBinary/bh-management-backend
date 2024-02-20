@@ -6,6 +6,33 @@ const ShortUniqueId = require("short-unique-id");
 const uid = new ShortUniqueId({ length: 10 });
 const { format, addMonths } = require("date-fns");
 
+const path = require('path');
+const multer = require('multer')
+const fs = require('fs');
+
+const storage = multer.diskStorage({
+    destination: (req, file, cb) => {
+        cb(null, "assets/testImages");
+    },
+    filename: (req, file, cb) => {
+        const fileExtension = path.extname(file.originalname).toLowerCase();
+        cb(null, uid.rnd() + fileExtension)
+    },
+});
+const fileFilter = (req, file, cb) => {
+    const allowedExtensions = ['.jpg', '.jpeg', '.png', '.svg'];
+    const fileExtension = path.extname(file.originalname).toLowerCase();
+    if (allowedExtensions.includes(fileExtension)) {
+        cb(null, true);
+    } else {
+        cb(new Error('Invalid file type. Only jpg, jpeg, png, and svg are allowed.'), false);
+    }
+}
+const upload = multer({
+    storage: storage,
+    fileFilter: fileFilter
+})
+
 // # TODO: Add validation
 exports.newContract = asyncHandler(async (req, res, next) => {
     const contractId = uid.rnd();
@@ -352,6 +379,51 @@ exports.payNecessityBill = [
             res.status(400).json({
                 "message": "failed to pay bill",
             });
+        } finally {
+            connection.release();
+        }
+    })
+];
+
+exports.newSignature = [
+    upload.array('images', 2),
+    param("contractId").isAlphanumeric().trim().escape().isLength({ min: 1 }),
+    body("dateSigned").isAlphanumeric().trim().escape().isLength({ min: 1 }),
+    asyncHandler(async (req, res) => {
+
+        const connection = await pool.getConnection();
+        const { contractId } = req.params;
+        const { dateSigned, signatories } = req.body;
+
+        const files = req.files;
+        try {
+            await connection.beginTransaction();
+
+            const signatoryList = JSON.parse(signatories);
+
+            if (files.length < 2) {
+                throw new Error("uploaded files less than two");
+            }
+            if (signatoryList.length < 2) {
+                throw new Error("list of signatories incomplete");
+            }
+            files.forEach(async (file, index) => {
+                const signatureId = uid.rnd();
+                const qNewSignature = "insert into contract_signature values (?,?,?,?,?,)";
+                const vNewSignature = [signatureId, contractId, signatoryList[index], file.path, dateSigned];
+                await connection.execute(qNewSignature, vNewSignature);
+            });
+
+            await connection.commit();
+
+            res.status(200).json({
+                'landlordSignature': files[0].path,
+                'tenantSignature': files[1].path,
+            });
+
+        } catch (error) {
+            console.log(error);
+            res.status(400).send("An error storing the images went wrong");
         } finally {
             connection.release();
         }
