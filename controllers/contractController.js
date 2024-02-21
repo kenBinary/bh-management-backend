@@ -446,3 +446,40 @@ exports.newSignature = [
         }
     })
 ];
+
+
+exports.deleteNecessity = [
+    param("contractId").isAlphanumeric().trim().escape().isLength({ min: 1 }),
+    param("necessityId").isAlphanumeric().trim().escape().isLength({ min: 1 }),
+    asyncHandler(async (req, res, next) => {
+        const { contractId, necessityId } = req.params;
+        const connection = await pool.getConnection();
+        try {
+            await connection.beginTransaction();
+
+            // delete necessity_fee
+            const qDeleteFees = "delete from necessity_fee where necessity_id = ?";
+            const vDeleteFees = [necessityId];
+            await connection.execute(qDeleteFees, vDeleteFees);
+
+            // delete necessity
+            const qDeleteNecessity = "delete from necessity where necessity_id = ?";
+            const vDeleteNecessity = [necessityId];
+            await connection.execute(qDeleteNecessity, vDeleteNecessity);
+
+            // retrieve updated necessity list
+            const query = "select distinct necessity.necessity_id, necessity.necessity_type, necessity.necessity_fee from necessity inner join necessity_fee on necessity.necessity_id = necessity_fee.necessity_id inner join necessity_bill on necessity_fee.necessity_bill_id = necessity_bill.necessity_bill_id inner join contract on necessity_bill.contract_id = contract.contract_id where contract.contract_id = ? order by necessity.necessity_type;";
+            const values = [contractId];
+            const [necessityList] = await connection.execute(query, values);
+
+            await connection.commit();
+            res.status(200).json(necessityList);
+        } catch (error) {
+            await connection.rollback();
+            console.log(error);
+            res.status(400).send("Failed to delete necessity");
+        } finally {
+            connection.release();
+        }
+    })
+];

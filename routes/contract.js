@@ -9,6 +9,8 @@ router.get('/:contractId/necessities', contractController.getNecessities);
 
 router.post('/:contractId/necessities', contractController.newNecessity);
 
+router.delete('/:contractId/necessities/:necessityId', contractController.deleteNecessity);
+
 router.post('/:contractId/signatures', contractController.newSignature);
 
 router.get('/:contractId/necessity-bills', checkNecessityBillStatus, contractController.getNecessityBills);
