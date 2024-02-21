@@ -371,3 +371,46 @@ exports.getCollectionDetails = asyncHandler(async (req, res, next) => {
         connection.release();
     }
 });
+
+exports.getSignatures = asyncHandler(async (req, res, next) => {
+    const { tenantId, contract_id } = req.params;
+    const connection = await pool.getConnection();
+    try {
+        const query = "SELECT * from contract_signature where contract_id = ?";
+        const values = [contract_id];
+        const [results] = await connection.execute(query, values);
+
+        const signatureUrls = {
+        };
+
+        results.forEach((signature) => {
+            signatureUrls[signature.signature_origin] = `http://localhost:3000/tenant/${tenantId}/contracts/${contract_id}/signatures/${signature.signature_id}`;
+        });
+        res.status(200).json(signatureUrls);
+    } catch (error) {
+        console.error(error);
+        res.status(400).send(
+            "failed to retrieve signatures"
+        );
+    } finally {
+        connection.release();
+    }
+});
+
+exports.getSignature = asyncHandler(async (req, res, next) => {
+    const { signatureId } = req.params;
+    const connection = await pool.getConnection();
+    try {
+        const query = "SELECT * from contract_signature where signature_id = ?";
+        const values = [signatureId];
+        const [results] = await connection.execute(query, values);
+        res.status(200).sendFile(path.join(__dirname, '../', results[0].signature_image));
+    } catch (error) {
+        console.error(error);
+        res.status(400).send(
+            "failed to retrieve signature"
+        );
+    } finally {
+        connection.release();
+    }
+});

@@ -35,5 +35,9 @@ router.get("/:tenantid/contracts/", tenantController.getContracts);
 
 router.put("/:tenantid/contracts/:contract_id", tenantController.editContract);
 
+router.get("/:tenantId/contracts/:contract_id/signatures/", tenantController.getSignatures);
+
+router.get("/:tenantId/contracts/:contract_id/signatures/:signatureId", tenantController.getSignature);
+
 
 module.exports = router;
