@@ -1,4 +1,3 @@
-// const pool = require('../models/dbPool');
 const pool = require('../models/DbConnection');
 const asyncHandler = require('express-async-handler')
 const { body, param } = require("express-validator");
@@ -6,13 +5,11 @@ const ShortUniqueId = require("short-unique-id");
 const uid = new ShortUniqueId({ length: 10 });
 const { format, addMonths } = require("date-fns");
 
-const path = require('path');
 const multer = require('multer')
-const fs = require('fs');
 
 const storage = multer.diskStorage({
     destination: (req, file, cb) => {
-        cb(null, "assets/testImages");
+        cb(null, "assets/images");
     },
     filename: (req, file, cb) => {
         const fileExtension = file.mimetype.split("/")[1].toLowerCase();
