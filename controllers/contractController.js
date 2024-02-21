@@ -36,16 +36,33 @@ const upload = multer({
 // # TODO: Add validation
 exports.newContract = asyncHandler(async (req, res, next) => {
     const contractId = uid.rnd();
-    const tenantId = req.body.tenantId;
-    const startDate = req.body.startDate;
-    const endDate = req.body.endDate;
+    const { tenantId, startDate, endDate } = req.body;
 
-    let connection = await pool.getConnection();
-    await connection.execute("insert into contract(contract_id, tenant_id, start_date, end_date, contract_status) values(?,?,?,?,?);", [contractId, tenantId, startDate, endDate, 0]);
-    connection.release();
-    res.status(200).json({
-        "message": "contract created",
-    });
+    const connection = await pool.getConnection();
+    try {
+        await connection.beginTransaction();
+
+        // creates new contract
+        const qNewContract = "insert into contract(contract_id, tenant_id, start_date, end_date, contract_status) values(?,?,?,?,?);";
+        const vNewContract = [contractId, tenantId, startDate, endDate, 0];
+        await connection.execute(qNewContract, vNewContract);
+
+        // returns created contract
+        const [contracts] = await connection.execute("select * from contract where tenant_id = ?", [tenantId]);
+        if (contracts.length > 0) {
+            const newDate = format(new Date(contracts[0].start_date), "MMM d, yyyy");
+            contracts[0].start_date = newDate;
+        }
+
+        await connection.commit();
+        res.status(200).json(contracts);
+    } catch (error) {
+        console.log(error);
+        res.status(400).send("failed to add a contract");
+    } finally {
+        connection.release();
+    }
+
 });
 
 exports.getNecessities = asyncHandler(async (req, res, next) => {
