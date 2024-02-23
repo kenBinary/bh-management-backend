@@ -58,8 +58,15 @@ exports.assignRoom = [
                 return accumulator + currentValue.utility_fee;
             }, 0));
 
+            // get start date of contract
+            const qContractCratedDate = "select start_date from contract where contract_id = ?"
+            const vContractCratedDate = [contractId];
+            const [contractCratedDate] = await connection.execute(qContractCratedDate, vContractCratedDate);
+            const startDate = contractCratedDate[0].start_date;
+
+
             // check if there is a bill for contract
-            const nextMonth = format(addMonths(new Date(), 1), "yyyy-MM-05");
+            const nextMonth = format(addMonths(new Date(startDate), 1), "yyyy-MM-dd");
             const existingBill = "select * from room_utility_bill where contract_id = ? and bill_due = ?;";
             const existingBillValues = [contractId, nextMonth];
             const [bill] = await connection.execute(existingBill, existingBillValues);
