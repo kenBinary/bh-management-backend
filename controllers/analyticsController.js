@@ -1,5 +1,68 @@
+const pool = require('../models/DbConnection');
 const asyncHandler = require('express-async-handler')
-const pool = require('../models/dbPool');
+
+exports.getPropertyMetrics = asyncHandler(async (req, res, next) => {
+    const connection = await pool.getConnection();
+    try {
+        await connection.beginTransaction();
+
+        let metrics = {
+            monthlyCashIn: 0,
+            totalTenants: 0,
+            rentCollections: 0,
+            vacantRooms: 0,
+        };
+
+        // Monthly Cash in 
+        const necessityBillQuery = "select sum(total_bill) as necessityTotal from necessity_bill where month(date_paid) = month(current_date());";
+        const roomUtilityBillQuery = "select sum(total_bill) as roomUtilityTotal from room_utility_bill where month(date_paid) = month(current_date());";
+
+        const [necessityTotal] = await connection.query(necessityBillQuery);
+        const [roomUtilityTotal] = await connection.query(roomUtilityBillQuery);
+        // [{ necessityTotal: '150' }] || [{ necessityTotal: null }]
+        // [{ roomUtilityTotal: '2900' }] || [{ roomUtilityTotal: null }]
+        if (necessityTotal[0].necessityTotal && roomUtilityTotal[0].roomUtilityTotal) {
+            metrics["monthlyCashIn"] = Number(necessityTotal[0].necessityTotal) + Number(roomUtilityTotal[0].roomUtilityTotal);
+        }
+
+        // Total Tenants
+        const totalTenantsQuery = "select count(*) as totalTenants from tenant inner join contract on tenant.tenant_id = contract.tenant_id;";
+        const [totalTenants] = await connection.query(totalTenantsQuery);
+        // [{ totalTenants: 1 }] || [ { totalTenants: 0 } ]
+        metrics["totalTenants"] = totalTenants[0].totalTenants;
+
+        // Rent Collections
+        const necessityBillCollectionQuery = "select count(bill_due) as rentCollection from necessity_bill where month(bill_due) = month(current_date())  and payment_status = false;";
+        const roomUtilityBillCollectionQuery = "select count(bill_due) as rentCollection from room_utility_bill where month(bill_due) = month(current_date())  and payment_status = false;";
+
+        const [necessityBillCollection] = await connection.query(necessityBillCollectionQuery);
+        const [roomUtilityBillCollection] = await connection.query(roomUtilityBillCollectionQuery);
+        // [ { rentCollection: 0 } ]
+        // [ { rentCollection: 0 } ]
+
+        metrics["rentCollections"] = roomUtilityBillCollection[0].rentCollection;
+
+        // Total Vacant Rooms
+        const vacantRoomsQuery = "select count(room_number) as vacantRooms from room where is_full = false;";
+
+        const [vacantRooms] = await connection.query(vacantRoomsQuery);
+        // [ { vacantRooms: 15 } ]
+
+        metrics["vacantRooms"] = vacantRooms[0].vacantRooms;
+
+        res.status(200).json(metrics);
+
+        await connection.commit();
+    } catch (error) {
+        console.error(error);
+        res.status(400).send("failed to get metrics");
+    } finally {
+        connection.release();
+    }
+});
+
+
+// ------------------- //
 
 exports.getMonthlyRevenue = asyncHandler(async (req, res, next) => {
     const connection = await pool.getConnection();

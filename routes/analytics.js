@@ -2,6 +2,9 @@ const express = require('express');
 const router = express.Router();
 const analyticsController = require("../controllers/analyticsController");
 
+router.get("/property-metrics", analyticsController.getPropertyMetrics);
+
+// 
 router.get("/yearly-revenue", analyticsController.getYearlyRevenue);
 
 router.get("/monthly-revenue", analyticsController.getMonthlyRevenue);
