@@ -129,6 +129,38 @@ exports.getYearlyCashIn = asyncHandler(async (req, res, next) => {
     }
 });
 
+exports.getPaymentCategories = asyncHandler(async (req, res, next) => {
+    const connection = await pool.getConnection();
+    try {
+
+        let paymentCategories = [
+            { "name": "Necessity", "value": 0 },
+            { "name": "Room", "value": 0 }
+        ]
+
+        // Monthly Cash in 
+        const necessityBillQuery = "select sum(total_bill) as necessityTotal from necessity_bill where month(date_paid) = month(current_date());";
+        const roomUtilityBillQuery = "select sum(total_bill) as roomUtilityTotal from room_utility_bill where month(date_paid) = month(current_date());";
+
+        const [necessityTotal] = await connection.query(necessityBillQuery);
+        const [roomUtilityTotal] = await connection.query(roomUtilityBillQuery);
+        // [{ necessityTotal: '150' }] || [{ necessityTotal: null }]
+        // [{ roomUtilityTotal: '2900' }] || [{ roomUtilityTotal: null }]
+
+        paymentCategories[0]["value"] = (necessityTotal[0].necessityTotal) ? Number(necessityTotal[0].necessityTotal) : 0;
+        paymentCategories[1]["value"] = (roomUtilityTotal[0].roomUtilityTotal) ? Number(roomUtilityTotal[0].roomUtilityTotal) : 0;
+
+        res.status(200).json(paymentCategories);
+
+    } catch (error) {
+        console.error(error);
+        res.status(400).send("failed to get payment categories");
+
+    } finally {
+        connection.release();
+    }
+});
+
 // ------------------- //
 
 exports.getMonthlyRevenue = asyncHandler(async (req, res, next) => {
@@ -203,18 +235,7 @@ exports.getRentCollections = asyncHandler(async (req, res, next) => {
     });
 });
 
-exports.getPaymentCategories = asyncHandler(async (req, res, next) => {
-    const connection = await pool.getConnection();
-    const recentPayments = await connection.query("CALL p_paid_categories();");
-    const arrayOfObjects = [recentPayments[0][0], recentPayments[1][0], recentPayments[2][0]];
-    const data = [
-        { name: "Room", revenue: parseInt(arrayOfObjects[0]["Room Revenue"]) },
-        { name: "Necessity", revenue: parseInt(arrayOfObjects[1]["Necessity Revenue"]) },
-        { name: "Utility", revenue: parseInt(arrayOfObjects[2]["Utility Revenue"]) },
-    ];
-    connection.end();
-    res.json(data);
-});
+
 
 exports.getPaymentRatio = asyncHandler(async (req, res, next) => {
     let data = [];

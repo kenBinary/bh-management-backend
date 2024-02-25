@@ -8,6 +8,8 @@ router.get("/room-overview", analyticsController.getRoomOverview)
 
 router.get("/yearly-cash-in", analyticsController.getYearlyCashIn)
 
+router.get("/payment-categories", analyticsController.getPaymentCategories);
+
 // 
 router.get("/yearly-revenue", analyticsController.getYearlyRevenue);
 
@@ -20,7 +22,6 @@ router.get("/vacant-rooms", analyticsController.getVacantRooms);
 router.get("/rent-collection", analyticsController.getRentCollections);
 
 
-router.get("/payment-categories", analyticsController.getPaymentCategories);
 
 router.get("/payment-ratio", analyticsController.getPaymentRatio);
 
