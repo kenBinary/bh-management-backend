@@ -10,6 +10,8 @@ router.get("/yearly-cash-in", analyticsController.getYearlyCashIn)
 
 router.get("/payment-categories", analyticsController.getPaymentCategories);
 
+router.get("/payment-ratio-status", analyticsController.getPaymentRatioStatus);
+
 // 
 router.get("/yearly-revenue", analyticsController.getYearlyRevenue);
 
@@ -23,7 +25,6 @@ router.get("/rent-collection", analyticsController.getRentCollections);
 
 
 
-router.get("/payment-ratio", analyticsController.getPaymentRatio);
 
 
 

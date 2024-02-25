@@ -161,6 +161,43 @@ exports.getPaymentCategories = asyncHandler(async (req, res, next) => {
     }
 });
 
+exports.getPaymentRatioStatus = asyncHandler(async (req, res, next) => {
+    const connection = await pool.getConnection();
+    try {
+
+        let paymentRatioStatus = [
+            {
+                "name": "Unpaid",
+                "value": 0
+            },
+            {
+                "name": "Paid",
+                "value": 0
+            },
+        ]
+
+        // bill unpaid/paid ratio 
+        const vRoomUtilityBill = "select count(payment_status) as ratio from necessity_bill where month(bill_due) = month(current_date()) group by payment_status order by payment_status;";
+
+        const [roomUtilityRatio] = await connection.query(vRoomUtilityBill);
+        // [{ ratio: 1 }, { ratio: 2 }] || []
+
+        if (roomUtilityRatio.length > 0) {
+            paymentRatioStatus[0]["value"] = roomUtilityRatio[0]["ratio"];
+            paymentRatioStatus[1]["value"] = roomUtilityRatio[1]["ratio"];
+        }
+
+        res.status(200).json(paymentRatioStatus);
+
+    } catch (error) {
+        console.error(error);
+        res.status(400).send("failed to get payment categories");
+
+    } finally {
+        connection.release();
+    }
+});
+
 // ------------------- //
 
 exports.getMonthlyRevenue = asyncHandler(async (req, res, next) => {
@@ -237,22 +274,3 @@ exports.getRentCollections = asyncHandler(async (req, res, next) => {
 
 
 
-exports.getPaymentRatio = asyncHandler(async (req, res, next) => {
-    let data = [];
-    const connection = await pool.getConnection();
-    const rows = await connection.query("SELECT COUNT(*) AS x  FROM v_paid_unpaid_analytics WHERE YEAR(due) = YEAR(CURDATE()) AND MONTH(due)=MONTH(CURDATE())+1 GROUP by (is_paid);");
-    if (rows.length > 0) {
-        data = [
-            { name: "paid", value: parseInt(rows[0]?.x) },
-            { name: "unpaid", value: parseInt(rows[1]?.x) }
-        ]
-    }
-    else {
-        data = [
-            { name: "paid", value: 0 },
-            { name: "unpaid", value: 0 }
-        ]
-    }
-    connection.end();
-    res.json(data);
-});
