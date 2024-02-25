@@ -198,79 +198,61 @@ exports.getPaymentRatioStatus = asyncHandler(async (req, res, next) => {
     }
 });
 
+
+exports.getRecentPayments = asyncHandler(async (req, res, next) => {
+    const connection = await pool.getConnection();
+    try {
+        // {
+        //     "firstHeader": 1,
+        //     "secondHeader": 2,
+        //     "thirdHeader": 3,
+        // }
+        const [necessityBills] = await connection.query(`select "Necessity" as 'Bill Type', concat(tenant.first_name," ", tenant.last_name) as 'Full Name', date_format(date_paid, "%M %d, %Y") as 'Date Paid', total_bill as 'Total Bill'  from necessity_bill inner join contract on contract.contract_id = necessity_bill.contract_id inner join tenant on tenant.tenant_id = contract.tenant_id where payment_status = true and month(date_paid) = month(current_date());`);
+        const [roomUtilityBills] = await connection.query(`select "Room" as 'Bill Type', concat(tenant.first_name," ", tenant.last_name) as 'Full Name', date_format(date_paid, "%M %d, %Y") as 'Date Paid', total_bill as 'Total Bill'  from room_utility_bill inner join contract on contract.contract_id = room_utility_bill.contract_id inner join tenant on tenant.tenant_id = contract.tenant_id where payment_status = true and month(date_paid) = month(current_date());`);
+        // [
+        //     {
+        //         'Bill Type': 'Necessity',
+        //         'Full Name': 'beerus sama',
+        //         'Date Paid': '2024-02-24',
+        //         'Total Bill': 150
+        //     },
+        //     {
+        //         'Bill Type': 'Necessity',
+        //         'Full Name': 'test test',
+        //         'Date Paid': '2024-02-25',
+        //         'Total Bill': 100
+        //     }
+        // ]
+        // [
+        //     {
+        //         'Bill Type': 'Room',
+        //         'Full Name': 'beerus sama',
+        //         'Date Paid': '2024-02-24',
+        //         'Total Bill': 2900
+        //     },
+        //     {
+        //         'Bill Type': 'Room',
+        //         'Full Name': 'test test',
+        //         'Date Paid': '2024-02-25',
+        //         'Total Bill': 2900
+        //     }
+        // ]
+        const data = [...necessityBills, ...roomUtilityBills].sort((a, b) => {
+            return a['Full Name'].localeCompare(b['Full Name'])
+        });
+
+        res.status(200).json(data);
+
+    } catch (error) {
+        console.error(error);
+        res.status(400).send("failed to get recent payments");
+
+    } finally {
+        connection.release();
+    }
+
+});
+
 // ------------------- //
-
-exports.getMonthlyRevenue = asyncHandler(async (req, res, next) => {
-    const connection = await pool.getConnection();
-    const revenue = await connection.query("SELECT * FROM v_monthly_revenue;");
-    const totalRevenue = revenue.reduce((accumulator, currentValue) => accumulator + currentValue.fee, 0);
-    connection.end();
-    res.json({
-        revenue: totalRevenue
-    });
-});
-exports.getYearlyRevenue = asyncHandler(async (req, res, next) => {
-    const data = [
-        { name: 'Jan', value: 0 },
-        { name: 'Feb', value: 0 },
-        { name: 'Mar', value: 0 },
-        { name: 'Apr', value: 0 },
-        { name: 'May', value: 0 },
-        { name: 'June', value: 0 },
-        { name: 'July', value: 0 },
-        { name: 'Aug', value: 0 },
-        { name: 'Sep', value: 0 },
-        { name: 'Oct', value: 0 },
-        { name: 'Nov', value: 0 },
-        { name: 'Dec', value: 0 }
-    ];
-    const connection = await pool.getConnection();
-    for (let i = 1; i <= 12; i++) {
-        const revenue = await connection.query(`call p_test(${i})`);
-        const x = revenue.flat().filter((element, index, array) => {
-            if (!(index === array.length - 1)) {
-                return true;
-            }
-        })
-        if (x.length > 0) {
-            const totalRevenue = x.reduce((accumulator, currentValue) => accumulator + currentValue.fee, 0);
-            data[i - 1].value = totalRevenue;
-        }
-    }
-    connection.end();
-    res.json(data);
-});
-
-exports.getTotalTenants = asyncHandler(async (req, res, next) => {
-    const connection = await pool.getConnection();
-    const totalTenants = await connection.query("SELECT COUNT(*) AS total_tenants FROM tenant WHERE occupancy_status = TRUE;");
-    connection.end();
-    res.json({
-        total_tenants: parseInt(totalTenants[0].total_tenants)
-    });
-});
-
-exports.getVacantRooms = asyncHandler(async (req, res, next) => {
-    const connection = await pool.getConnection();
-    const vacant = await connection.query("SELECT COUNT(*) as total FROM room WHERE room_status = FALSE;");
-    connection.end();
-    res.json({
-        total_vacant: parseInt(vacant[0].total)
-    });
-});
-
-exports.getRentCollections = asyncHandler(async (req, res, next) => {
-    const connection = await pool.getConnection();
-    const rentCollection = await connection.query("SELECT * FROM v_rent_collection;");
-    connection.end();
-    let total = 0
-    if (rentCollection.length > 0) {
-    }
-    console.log(rentCollection)
-    res.json({
-        total: parseInt(total)
-    });
-});
-
 
 
