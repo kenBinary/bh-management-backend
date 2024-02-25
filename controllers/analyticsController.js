@@ -61,6 +61,73 @@ exports.getPropertyMetrics = asyncHandler(async (req, res, next) => {
     }
 });
 
+exports.getRoomOverview = asyncHandler(async (req, res, next) => {
+    const connection = await pool.getConnection();
+    try {
+
+        const [roomOverview] = await connection.query("select count(room_status) as count from room group by(room_status) order by room_status;");
+        // [{ count: 2 }, { count: 15 }]
+        const data = [
+            { name: "occupied", value: roomOverview[0].count },
+            { name: "vacant", value: roomOverview[1].count },
+        ]
+        res.status(200).json(data);
+
+    } catch (error) {
+        console.error(error);
+        res.status(400).send("Failed to get room overview");
+    } finally {
+        connection.release();
+    }
+});
+
+exports.getYearlyCashIn = asyncHandler(async (req, res, next) => {
+    const connection = await pool.getConnection();
+    try {
+        const data = [
+            { name: 'Jan', value: 0 },
+            { name: 'Feb', value: 0 },
+            { name: 'Mar', value: 0 },
+            { name: 'Apr', value: 0 },
+            { name: 'May', value: 0 },
+            { name: 'June', value: 0 },
+            { name: 'July', value: 0 },
+            { name: 'Aug', value: 0 },
+            { name: 'Sep', value: 0 },
+            { name: 'Oct', value: 0 },
+            { name: 'Nov', value: 0 },
+            { name: 'Dec', value: 0 }
+        ];
+        for (let i = 1; i <= 12; i++) {
+
+            const qNecessityBill = "select sum(total_bill) as total from necessity_bill where month(date_paid) = ? and year(date_paid) = year(current_date()) and payment_status = true;";
+            const vNecessityBill = [i];
+            const [necessityBill] = await connection.execute(qNecessityBill, vNecessityBill);
+            const necessityTotal = (necessityBill[0]['total']) ? necessityBill[0]['total'] : 0;
+            // [{ 'total': null }]
+            // [{ 'total': '250' }]
+
+
+            const qRoomUtilityBill = "select sum(total_bill) as total from room_utility_bill where month(date_paid) = ? and year(date_paid) = year(current_date()) and payment_status = true;";
+            const vRoomUtilityBill = [i];
+            const [roomUtilityBill] = await connection.execute(qRoomUtilityBill, vRoomUtilityBill);
+            // [{ 'total': null }]
+            // [{ 'total': '5800' }]
+            const roomUtilityTotal = (roomUtilityBill[0]['total']) ? roomUtilityBill[0]['total'] : 0;
+
+            data[i - 1]['value'] = Number(necessityTotal) + Number(roomUtilityTotal);
+
+        }
+
+        res.status(200).json(data);
+
+    } catch (error) {
+        console.error(error);
+        res.status(400).send("Failed to get room overview");
+    } finally {
+        connection.release();
+    }
+});
 
 // ------------------- //
 
@@ -134,17 +201,6 @@ exports.getRentCollections = asyncHandler(async (req, res, next) => {
     res.json({
         total: parseInt(total)
     });
-});
-
-exports.getRoomOverview = asyncHandler(async (req, res, next) => {
-    const connection = await pool.getConnection();
-    const rooms = await connection.query("SELECT COUNT(room_status) AS x FROM room GROUP BY (room_status);");
-    const data = [
-        { name: "vacant", value: parseInt((rooms[0]?.x ?? 0)) },
-        { name: "occupied", value: parseInt((rooms[1]?.x) ?? 0) },
-    ]
-    connection.end();
-    res.json(data);
 });
 
 exports.getPaymentCategories = asyncHandler(async (req, res, next) => {

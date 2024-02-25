@@ -4,6 +4,10 @@ const analyticsController = require("../controllers/analyticsController");
 
 router.get("/property-metrics", analyticsController.getPropertyMetrics);
 
+router.get("/room-overview", analyticsController.getRoomOverview)
+
+router.get("/yearly-cash-in", analyticsController.getYearlyCashIn)
+
 // 
 router.get("/yearly-revenue", analyticsController.getYearlyRevenue);
 
@@ -15,7 +19,6 @@ router.get("/vacant-rooms", analyticsController.getVacantRooms);
 
 router.get("/rent-collection", analyticsController.getRentCollections);
 
-router.get("/room-overview", analyticsController.getRoomOverview)
 
 router.get("/payment-categories", analyticsController.getPaymentCategories);
 
