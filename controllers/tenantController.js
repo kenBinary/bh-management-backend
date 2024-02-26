@@ -126,50 +126,70 @@ exports.getTenant = asyncHandler(async (req, res, next) => {
 });
 
 exports.editTenant = [
+    upload.single('newImage'),
     param("tenantid").isAlphanumeric().trim().escape().isLength({ min: 1 }),
     body("newFirstName").isAlphanumeric().trim().escape().isLength({ min: 1 }),
     body("newLastName").isAlphanumeric().trim().escape().isLength({ min: 1 }),
-    body("newContactNum").isAlphanumeric().trim().escape().isLength({ min: 1 }),
-    body("newEmail").isAlphanumeric().trim().escape().isLength({ min: 1 }),
-    upload.single('newImage'),
+    body("newContactNum").isNumeric().trim().escape().isLength({ min: 10, max: 10 }),
+    body("newEmail").optional({
+        checkFalsy: true,
+    }).isEmail().isLength({ min: 4 }).trim().escape(),
     asyncHandler(async (req, res, next) => {
-        const { tenantid } = req.params;
-        const { newFirstName, newLastName, newContactNum } = req.body;
-        let { newEmail } = req.body;
-        if (!newEmail) {
-            newEmail = null;
-        }
-
-        const data = {
-            tenant_id: tenantid,
-            first_name: newFirstName,
-            last_name: newLastName,
-            contact_number: newContactNum,
-            email: newEmail,
-            tenant_image: req.file.path
-        };
-
 
         const connection = await pool.getConnection();
-        const [previousImage] = await connection.execute("select tenant_image from tenant where tenant_id = ?", [tenantid]);
 
-        let message = "record updated";
-        if (previousImage[0].tenant_image) {
-            try {
-                fs.unlinkSync(previousImage[0].tenant_image);
-            } catch (err) {
-                message = "record updated but failed to delete image";
+        try {
+
+            const result = validationResult(req);
+            if (!result.isEmpty()) {
+                throw new Error("check inputs");
             }
-        }
-        const query = "UPDATE tenant SET first_name = ?, last_name = ?, contact_number = ?, email= ?, tenant_image = ? WHERE tenant_id = ?;";
-        const values = [newFirstName, newLastName, newContactNum, newEmail, req.file.path, tenantid];
-        await connection.execute(query, values);
-        connection.release();
+            if (!req.file) {
+                throw new Error("no image file");
+            }
 
-        res.status(200).json({
-            "message": message,
-            "data": data,
-        });
+            const { tenantid } = req.params;
+            const { newFirstName, newLastName, newContactNum } = req.body;
+            let { newEmail } = req.body;
+            if (!newEmail) {
+                newEmail = null;
+            }
+
+            const data = {
+                tenant_id: tenantid,
+                first_name: newFirstName,
+                last_name: newLastName,
+                contact_number: newContactNum,
+                email: newEmail,
+                tenant_image: req.file.path
+            };
+
+
+            const [previousImage] = await connection.execute("select tenant_image from tenant where tenant_id = ?", [tenantid]);
+
+            let message = "record updated";
+            if (previousImage[0].tenant_image) {
+                try {
+                    fs.unlinkSync(previousImage[0].tenant_image);
+                } catch (err) {
+                    message = "record updated but failed to delete image";
+                }
+            }
+            const query = "UPDATE tenant SET first_name = ?, last_name = ?, contact_number = ?, email= ?, tenant_image = ? WHERE tenant_id = ?;";
+            const values = [newFirstName, newLastName, newContactNum, newEmail, req.file.path, tenantid];
+            await connection.execute(query, values);
+            connection.release();
+
+            res.status(200).json({
+                "message": message,
+                "data": data,
+            });
+        } catch (error) {
+            console.error(error);
+            res.status(400).send("failed to edit tenant");
+        } finally {
+            connection.release();
+        }
     })
 ];
 
