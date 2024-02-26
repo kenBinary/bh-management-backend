@@ -1,7 +1,7 @@
 // const pool = require('../models/dbPool');
 const pool = require('../models/DbConnection');
 const asyncHandler = require('express-async-handler')
-const { body, param } = require("express-validator");
+const { body, param, validationResult, check, matchedData } = require("express-validator");
 const ShortUniqueId = require("short-unique-id");
 const uid = new ShortUniqueId({ length: 10 });
 const { format } = require("date-fns");
@@ -58,41 +58,62 @@ exports.getTenants = asyncHandler(async (req, res, next) => {
 });
 
 exports.newTenant = [
+    upload.single('tenantImage'),
     body("firstName").isAlphanumeric().trim().escape().isLength({ min: 1 }),
     body("lastName").isAlphanumeric().trim().escape().isLength({ min: 1 }),
-    body("contactNum").isAlphanumeric().trim().escape().isLength({ min: 1 }),
-    body("email").isAlphanumeric().trim().escape().isLength({ min: 1 }),
-    upload.single('tenantImage'),
+    body("contactNum").isNumeric().trim().escape().isLength({ min: 10, max: 10 }),
+    body("email").optional({
+        checkFalsy: true,
+    }).isEmail().isLength({ min: 4 }).trim().escape(),
     asyncHandler(async (req, res, next) => {
-        const { firstName, lastName, contactNum } = req.body;
-        let { email } = req.body;
-        const { path: imagePath } = req.file;
-        if (!email) {
-            email = null;
-        }
-
-        const tenantId = uid.rnd();
-        const data = {
-            tenant_id: tenantId,
-            first_name: firstName,
-            last_name: lastName,
-            occupancy_status: 0,
-            contact_number: contactNum,
-            archive_status: 0,
-            email: email,
-            tenant_image: imagePath,
-        };
 
         const connection = await pool.getConnection();
-        const query = "INSERT INTO `tenant` (`tenant_id`,`first_name`, `last_name`, `contact_number`,`email`,`tenant_image`) VALUES (?,?,?,?,?,?)";
-        const values = [tenantId, firstName, lastName, contactNum, email, imagePath];
-        await connection.execute(query, values);
-        connection.release();
 
-        res.status(200).json({
-            "message": "Tenant Created",
-            "data": data,
-        });
+        try {
+
+            const result = validationResult(req);
+            if (!result.isEmpty()) {
+                throw new Error("check inputs");
+            }
+            if (!req.file) {
+                throw new Error("no image file");
+            }
+
+            const { firstName, lastName, contactNum } = req.body;
+            let { email } = req.body;
+            const { path: imagePath } = req.file;
+            if (!email) {
+                email = null;
+            }
+
+            const tenantId = uid.rnd();
+            const data = {
+                tenant_id: tenantId,
+                first_name: firstName,
+                last_name: lastName,
+                occupancy_status: 0,
+                contact_number: contactNum,
+                archive_status: 0,
+                email: email,
+                tenant_image: imagePath,
+            };
+
+            const query = "INSERT INTO `tenant` (`tenant_id`,`first_name`, `last_name`, `contact_number`,`email`,`tenant_image`) VALUES (?,?,?,?,?,?)";
+            const values = [tenantId, firstName, lastName, contactNum, email, imagePath];
+            await connection.execute(query, values);
+
+            res.status(200).json({
+                "message": "Tenant Created",
+                "data": data,
+            });
+
+        } catch (error) {
+            console.error(error.message);
+            res.status(400).send("failed to add tenant");
+        } finally {
+            connection.release();
+        }
+
     })
 ];
 
