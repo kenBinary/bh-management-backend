@@ -196,20 +196,33 @@ exports.addNecessity = [
 ];
 
 exports.getPaymentHistory = asyncHandler(async (req, res, next) => {
-    const tenantId = req.params.id;
+
+    const { tenantid } = req.params;
     const connection = await pool.getConnection();
-    const history = await connection.execute("CALL `p_tenant_payment_history`(?)", [tenantId]);
-    const data = []
-    if (history.flat().length > 2) {
-        history.flat().forEach((element, index, array) => {
-            if (!(index === array.length - 1)) {
-                data.push(element);
-            }
-        });
+
+    try {
+
+        const qNecessityBills = `select concat(tenant.first_name, " ", tenant.last_name) as 'Full Name', date_format(necessity_bill.date_paid, "%M %d, %Y")  as 'Date Paid',  date_format(necessity_bill.bill_due, "%M %d, %Y")  as 'Bill Due', necessity_bill.total_bill as 'Total Bill'   from necessity_bill inner join contract on contract.contract_id = necessity_bill.contract_id inner join tenant on contract.tenant_id = tenant.tenant_id where necessity_bill.payment_status = true and tenant.tenant_id = ?  order by necessity_bill.date_paid;`;
+        const vNecessityBills = [tenantid];
+        const [necessityBills] = await connection.execute(qNecessityBills, vNecessityBills);
+
+        const qRoomUtilityBills = `select concat(tenant.first_name, " ", tenant.last_name) as 'Full Name', date_format(room_utility_bill.date_paid, "%M %d, %Y")  as 'Date Paid',  date_format(room_utility_bill.bill_due, "%M %d, %Y")  as 'Bill Due', room_utility_bill.total_bill as 'Total Bill'   from room_utility_bill inner join contract on contract.contract_id = room_utility_bill.contract_id inner join tenant on contract.tenant_id = tenant.tenant_id where room_utility_bill.payment_status = true and tenant.tenant_id = ? order by room_utility_bill.date_paid;`;
+        const vRoomUtilityBills = [tenantid];
+        const [roomUtilityBills] = await connection.execute(qRoomUtilityBills, vRoomUtilityBills);
+
+        res.status(200).json([...necessityBills, ...roomUtilityBills]);
+
+    } catch (error) {
+
+        console.error(error);
+        res.status(400).send("failed to get payment history");
+
+    } finally {
+        connection.release();
     }
-    connection.end();
-    res.json(data);
 });
+
+// --------------- //
 
 exports.getTenantNecessity = asyncHandler(async (req, res, next) => {
     const id = req.params.tenantid;
@@ -236,21 +249,6 @@ exports.newTenantNecessity = [
     })
 ];
 
-exports.getPaymentHistory = asyncHandler(async (req, res, next) => {
-    const tenantId = req.params.tenantid;
-    const connection = await pool.getConnection();
-    const history = await connection.execute("CALL `p_tenant_payment_history`(?)", [tenantId]);
-    const data = []
-    if (history.flat().length > 2) {
-        history.flat().forEach((element, index, array) => {
-            if (!(index === array.length - 1)) {
-                data.push(element);
-            }
-        });
-    }
-    connection.end();
-    res.json(data);
-});
 exports.getContracts = asyncHandler(async (req, res, next) => {
     const tenantId = req.params.tenantid;
     const connection = await pool.getConnection();

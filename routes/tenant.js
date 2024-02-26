@@ -29,8 +29,6 @@ router.get("/:tenantid/payment-history", tenantController.getPaymentHistory);
 
 router.post("/:tenantid/add-necessity", tenantController.addNecessity);
 
-router.get("/:tenantid/payment-history", tenantController.getPaymentHistory);
-
 router.get("/:tenantid/contracts/", tenantController.getContracts);
 
 router.put("/:tenantid/contracts/:contract_id", tenantController.editContract);
