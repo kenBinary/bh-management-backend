@@ -64,17 +64,17 @@ exports.checkRoomUtilityBillStatus = asyncHandler(async (req, res, next) => {
     const currentDate = format(new Date(), "yyyy-MM-dd");
     try {
         // check if there is an unpaid bill in previous months
-        const uQuery = "select contract.room_number, room_utility_bill.room_utility_bill_id, room_utility_bill.total_bill, room_utility_bill.bill_due, room_utility_bill.date_paid, room_utility_bill.payment_status from room_utility_bill inner join contract on room_utility_bill.contract_id = contract.contract_id where room_utility_bill.payment_status = false and contract.contract_id = ? and room_utility_bill.bill_due < ? order by room_utility_bill.bill_due desc;";
+        const uQuery = "select contract.room_number, room_utility_bill.room_utility_bill_id, room_utility_bill.total_bill, room_utility_bill.bill_due, room_utility_bill.date_paid, room_utility_bill.payment_status from room_utility_bill inner join contract on room_utility_bill.contract_id = contract.contract_id where room_utility_bill.payment_status = false and contract.contract_id = ? and room_utility_bill.bill_due <= ? order by room_utility_bill.bill_due desc;";
         const uValues = [contractId, currentDate];
-        const [roomUtilityBills] = await connection.execute(uQuery, uValues);
+        const [prevRoomUtilityBills] = await connection.execute(uQuery, uValues);
 
         const cQuery = "select contract.room_number, room_utility_bill.room_utility_bill_id, room_utility_bill.total_bill, room_utility_bill.bill_due, room_utility_bill.date_paid, room_utility_bill.payment_status from room_utility_bill inner join contract on room_utility_bill.contract_id = contract.contract_id where room_utility_bill.payment_status = false and contract.contract_id = ? and room_utility_bill.bill_due > ? order by room_utility_bill.bill_due desc;";
         const vValues = [contractId, currentDate];
         const [nextMonthBills] = await connection.execute(cQuery, vValues);
 
-        if ((roomUtilityBills.length > 0) && (nextMonthBills.length < 1)) {
-            const roomNumber = roomUtilityBills[0].room_number;
-            const previousDue = roomUtilityBills[0].bill_due;
+        if ((prevRoomUtilityBills.length > 0) && (nextMonthBills.length < 1)) {
+            const roomNumber = prevRoomUtilityBills[0].room_number;
+            const previousDue = prevRoomUtilityBills[0].bill_due;
             const nextBillDue = format(addMonths(new Date(previousDue), 1), "yyyy-MM-dd");
 
 
