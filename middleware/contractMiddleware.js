@@ -10,7 +10,7 @@ exports.checkNecessityBillStatus = asyncHandler(async (req, res, next) => {
     const currentDate = format(new Date(), "yyyy-MM-dd");
     try {
         // check if there is an unpaid bill in previous months
-        const qCurrentBill = "select necessity_bill.necessity_bill_id, necessity_bill.total_bill, necessity_bill.bill_due, necessity_bill.date_paid,  necessity_bill.payment_status from necessity_bill inner join contract on necessity_bill.contract_id = contract.contract_id  where necessity_bill.payment_status = false and contract.contract_id = ? and necessity_bill.bill_due < ? order by necessity_bill.bill_due desc";
+        const qCurrentBill = "select necessity_bill.necessity_bill_id, necessity_bill.total_bill, necessity_bill.bill_due, necessity_bill.date_paid,  necessity_bill.payment_status from necessity_bill inner join contract on necessity_bill.contract_id = contract.contract_id  where necessity_bill.payment_status = false and contract.contract_id = ? and necessity_bill.bill_due <= ? order by necessity_bill.bill_due desc";
         const vCurrentBill = [contractId, currentDate];
         const [currentNecessityBills] = await connection.execute(qCurrentBill, vCurrentBill);
 
