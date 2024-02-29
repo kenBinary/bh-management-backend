@@ -21,5 +21,11 @@ router.post('/:contractId/room-utility-bills/:billId', contractController.payRoo
 
 router.post('/:contractId/necessity-bills/:billId', contractController.payNecessityBill);
 
+router.put('/:contractId/necessity-bills/:billId', contractController.updateNecessityBill);
+
+router.put('/:contractId/room-utility-bills/:billId', contractController.updateRoomUtilityBill);
+
+
+
 
 module.exports = router;

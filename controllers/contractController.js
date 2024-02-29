@@ -486,3 +486,45 @@ exports.deleteNecessity = [
         }
     })
 ];
+
+exports.updateNecessityBill = asyncHandler(async (req, res, next) => {
+    const { billId } = req.params;
+    const { newTotal } = req.body;
+    const connection = await pool.getConnection();
+    try {
+        const query = "update necessity_bill set total_bill = ? where necessity_bill_id = ?";
+        const values = [newTotal, billId];
+        await connection.execute(query, values);
+
+        const qUpdatedBill = "select * from necessity_bill where necessity_bill_id = ?";
+        const vUpdatedBill = [billId];
+        const [updatedBill] = await connection.execute(qUpdatedBill, vUpdatedBill);
+        res.status(200).json(updatedBill);
+
+    } catch (error) {
+        res.status(400).send("failed to update necessity bill");
+    } finally {
+        connection.release();
+    }
+});
+
+exports.updateRoomUtilityBill = asyncHandler(async (req, res, next) => {
+    const { billId } = req.params;
+    const { newTotal } = req.body;
+    const connection = await pool.getConnection();
+    try {
+        const query = "update room_utility_bill set total_bill = ? where room_utility_bill_id = ?";
+        const values = [newTotal, billId];
+        await connection.execute(query, values);
+
+        const qUpdatedBill = "select * from room_utility_bill where room_utility_bill_id = ?";
+        const vUpdatedBill = [billId];
+        const [updatedBill] = await connection.execute(qUpdatedBill, vUpdatedBill);
+        res.status(200).json(updatedBill);
+
+    } catch (error) {
+        res.status(400).send("failed to update room bill");
+    } finally {
+        connection.release();
+    }
+});
