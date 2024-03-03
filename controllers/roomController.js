@@ -44,8 +44,22 @@ exports.assignRoom = [
             let isFull = null
             let occupantCount = null;
             if (roomDetail.length > 0) {
+
+                if (roomDetail[0].room_type === "double room" && !isFull) {
+
+                    // get unoccupied blocks
+                    const qUnoccupiedBlock = "select * from room_block where contract_id is null and room_number = ?";
+                    const vUnoccupiedBlock = [room_number];
+                    const [unoccupiedBLocks] = await connection.execute(qUnoccupiedBlock, vUnoccupiedBlock);
+
+                    // update room block
+                    const qUpdateRoomBlock = "update room_block set contract_id = ? where room_block_id = ? ";
+                    const vUpdateRoomBlock = [contractId, unoccupiedBLocks[0]['room_block_id']];
+                    await connection.execute(qUpdateRoomBlock, vUpdateRoomBlock);
+                }
+
                 occupantCount = roomDetail[0].occupant_count + 1;
-                isFull = (occupantCount >= roomDetail[0].headcount) ? true : false;
+                isFull = (occupantCount >= roomDetail[0].headcount);
             }
             const roomQuery = "update room set room_status = ?, is_full = ?, occupant_count = ? where room_number = ? ";
             const roomValues = ["occupied", isFull, occupantCount, room_number];
