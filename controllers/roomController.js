@@ -185,6 +185,11 @@ exports.freeRoom = [
                 isFull = !(occupantCount < roomDetail[0].headcount);
             }
 
+            // update room block
+            const qRoomBlock = "update room_block set contract_id = NULL where contract_id = ?";
+            const vRoomBlock = [contractId];
+            await connection.execute(qRoomBlock, vRoomBlock);
+
             const isOccupied = (occupantCount > 0) ? "occupied" : "vacant";
             const roomQuery = "update room set room_status = ?, is_full = ?, occupant_count = ? where room_number = ? ";
             const roomValues = [isOccupied, isFull, occupantCount, room_number];
