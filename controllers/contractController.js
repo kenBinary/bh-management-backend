@@ -3,7 +3,7 @@ const asyncHandler = require('express-async-handler')
 const { body, param } = require("express-validator");
 const ShortUniqueId = require("short-unique-id");
 const uid = new ShortUniqueId({ length: 10 });
-const { format, addMonths } = require("date-fns");
+const { format, addMonths, subMonths } = require("date-fns");
 
 const multer = require('multer')
 
@@ -100,11 +100,34 @@ exports.newNecessity = [
             const necessityValues = [necessityId, necessityType, necessityFee];
             await connection.execute(newNecessity, necessityValues);
 
-            // get start date of contract
-            const qContractCratedDate = "select start_date from contract where contract_id = ?"
-            const vContractCratedDate = [contractId];
-            const [contractCratedDate] = await connection.execute(qContractCratedDate, vContractCratedDate);
-            const startDate = contractCratedDate[0].start_date;
+            const qFirstBill = "select count(necessity_bill.necessity_bill_id) as count from contract inner join necessity_bill on contract.contract_id = necessity_bill.contract_id where necessity_bill.contract_id = ?;"
+            const vFirstBill = [contractId];
+            const [firstBill] = await connection.execute(qFirstBill, vFirstBill);
+            // [ { count: 0 } ]
+            let startDate = '';
+            if (firstBill[0].count > 1) {
+                const qLatestBill = "select * from necessity_bill where contract_id = ? and payment_status = false order by bill_due desc;;"
+                const vLatestBill = [contractId];
+                const [LatestBill] = await connection.execute(qLatestBill, vLatestBill);
+                // [
+                //     {
+                //         necessity_bill_id: '0kbL79cMei',
+                //         contract_id: 'Swn42Tke8Z',
+                //         date_paid: null,
+                //         bill_due: '2024-06-05',
+                //         payment_status: 0,
+                //         total_bill: 78
+                //     },
+                // ]
+                startDate = format(subMonths(new Date(LatestBill[0].bill_due), 1), "yyyy-MM-dd");
+
+            } else {
+                // get start date of contract
+                const qContractCratedDate = "select start_date from contract where contract_id = ?"
+                const vContractCratedDate = [contractId];
+                const [contractCratedDate] = await connection.execute(qContractCratedDate, vContractCratedDate);
+                startDate = contractCratedDate[0].start_date;
+            }
 
             // check if there is a bill for contract
             const nextMonth = format(addMonths(new Date(startDate), 1), "yyyy-MM-dd");
@@ -124,8 +147,8 @@ exports.newNecessity = [
 
                 // update total bill of existing bill
                 const totalBill = bill[0].total_bill + Number(necessityFee);
-                const updateBill = "update necessity_bill set total_bill = ? where contract_id = ?;"
-                const updateBillValues = [totalBill, contractId];
+                const updateBill = "update necessity_bill set total_bill = ? where contract_id = ? and bill_due = ?;"
+                const updateBillValues = [totalBill, contractId, nextMonth];
                 await connection.execute(updateBill, updateBillValues);
 
             } else {
@@ -218,7 +241,7 @@ exports.payRoomUtilityBill = [
             await connection.beginTransaction();
 
             const currentDate = format(new Date(), "yyyy-MM-dd");
-            const newBillDue = format(addMonths(new Date(previousDue), 1), "yyyy-MM-05");
+            const newBillDue = format(addMonths(new Date(previousDue), 1), "yyyy-MM-dd");
 
             // update room bill
             const qRoomBIll = "update room_utility_bill set date_paid = ? , payment_status = ? where room_utility_bill_id = ?;";
@@ -309,7 +332,7 @@ exports.payNecessityBill = [
 
 
             const currentDate = format(new Date(), "yyyy-MM-dd");
-            const newBillDue = format(addMonths(new Date(previousDue), 1), "yyyy-MM-05");
+            const newBillDue = format(addMonths(new Date(previousDue), 1), "yyyy-MM-dd");
 
             // get necessity fees for bill
             const qBillNecessityFees = "select * from necessity_fee where necessity_bill_id = ?";
@@ -331,13 +354,15 @@ exports.payNecessityBill = [
             const vUnpaidFees = [billId];
             const [unpaidFees] = await connection.execute(qUnpaidFees, vUnpaidFees);
 
-            // // remove necessities and their fees that are unpaid
+            // // remove necessity_fees that are unpaid
             unpaidFees.forEach(async (necessity) => {
-                console.log(necessity);
                 const qUnpaidFees = "delete from necessity_fee where necessity_bill_id = ? and is_paid = false;"
                 const vUnpaidFees = [necessity.necessity_bill_id];
                 await connection.execute(qUnpaidFees, vUnpaidFees);
+            });
 
+            // remove necessities that are unpaid
+            unpaidFees.forEach(async (necessity) => {
                 const qUnpaidNecessity = "delete from necessity where necessity_id = ?";
                 const vUnpaidNecessity = [necessity.necessity_id];
                 await connection.execute(qUnpaidNecessity, vUnpaidNecessity);
