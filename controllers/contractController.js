@@ -454,7 +454,7 @@ exports.newSignature = [
 exports.deleteNecessity = [
     param("contractId").isAlphanumeric().trim().escape().isLength({ min: 1 }),
     param("necessityId").isAlphanumeric().trim().escape().isLength({ min: 1 }),
-    asyncHandler(async (req, res, next) => {
+    asyncHandler(async (req, res) => {
         const { contractId, necessityId } = req.params;
         const connection = await pool.getConnection();
         try {
@@ -474,6 +474,16 @@ exports.deleteNecessity = [
             const query = "select distinct necessity.necessity_id, necessity.necessity_type, necessity.necessity_fee from necessity inner join necessity_fee on necessity.necessity_id = necessity_fee.necessity_id inner join necessity_bill on necessity_fee.necessity_bill_id = necessity_bill.necessity_bill_id inner join contract on necessity_bill.contract_id = contract.contract_id where contract.contract_id = ? order by necessity.necessity_type;";
             const values = [contractId];
             const [necessityList] = await connection.execute(query, values);
+
+            // get new necessity_bill total
+            const newTotal = necessityList.reduce((accumulator, currentValue) => {
+                return accumulator + currentValue.necessity_fee;
+            }, 0);
+
+            // update new necessity_bill total
+            const qUpdateTotal = "update necessity_bill set total_bill = ? where contract_id = ?";
+            const vUpdateTotal = [newTotal, contractId];
+            await connection.execute(qUpdateTotal, vUpdateTotal);
 
             await connection.commit();
             res.status(200).json(necessityList);
