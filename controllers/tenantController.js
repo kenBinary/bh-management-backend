@@ -141,12 +141,12 @@ exports.editTenant = [
         try {
 
             const result = validationResult(req);
+
+
             if (!result.isEmpty()) {
                 throw new Error("check inputs");
             }
-            if (!req.file) {
-                throw new Error("no image file");
-            }
+
 
             const { tenantid } = req.params;
             const { newFirstName, newLastName, newContactNum } = req.body;
@@ -155,28 +155,41 @@ exports.editTenant = [
                 newEmail = null;
             }
 
+            const newFileExists = (req.file) ? true : false;
+            const existingFileExists = (req.body.newImage) ? true : false;
+
+            let imagePath = "";
+
+            let message = "record updated";
+            if (newFileExists) {
+                imagePath = req.file.path;
+                const [previousImage] = await connection.execute("select tenant_image from tenant where tenant_id = ?", [tenantid]);
+                if (previousImage[0].tenant_image) {
+                    try {
+                        fs.unlinkSync(previousImage[0].tenant_image);
+                    } catch (err) {
+                        message = "record updated but failed to delete image";
+                    }
+                }
+            }
+            if (existingFileExists) {
+                imagePath = req.body.newImage;
+            }
+
             const data = {
                 tenant_id: tenantid,
                 first_name: newFirstName,
                 last_name: newLastName,
                 contact_number: newContactNum,
                 email: newEmail,
-                tenant_image: req.file.path
+                // tenant_image: req.file.path
+                tenant_image: imagePath
             };
 
 
-            const [previousImage] = await connection.execute("select tenant_image from tenant where tenant_id = ?", [tenantid]);
 
-            let message = "record updated";
-            if (previousImage[0].tenant_image) {
-                try {
-                    fs.unlinkSync(previousImage[0].tenant_image);
-                } catch (err) {
-                    message = "record updated but failed to delete image";
-                }
-            }
             const query = "UPDATE tenant SET first_name = ?, last_name = ?, contact_number = ?, email= ?, tenant_image = ? WHERE tenant_id = ?;";
-            const values = [newFirstName, newLastName, newContactNum, newEmail, req.file.path, tenantid];
+            const values = [newFirstName, newLastName, newContactNum, newEmail, imagePath, tenantid];
             await connection.execute(query, values);
             connection.release();
 
