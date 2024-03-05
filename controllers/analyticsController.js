@@ -66,11 +66,20 @@ exports.getRoomOverview = asyncHandler(async (req, res, next) => {
     try {
 
         const [roomOverview] = await connection.query("select count(room_status) as count from room group by(room_status) order by room_status;");
+        console.log(roomOverview);
         // [{ count: 2 }, { count: 15 }]
-        const data = [
-            { name: "occupied", value: roomOverview[0].count },
-            { name: "vacant", value: roomOverview[1].count },
-        ]
+
+        let data = null;
+        if (roomOverview.length < 2) {
+            data = [
+                { name: "vacant", value: roomOverview[0].count },
+            ]
+        } else {
+            data = [
+                { name: "occupied", value: roomOverview[0].count },
+                { name: "vacant", value: roomOverview[1].count },
+            ]
+        }
         res.status(200).json(data);
 
     } catch (error) {
