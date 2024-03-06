@@ -2,7 +2,7 @@ const pool = require('../models/DbConnection');
 const asyncHandler = require('express-async-handler')
 const ShortUniqueId = require("short-unique-id");
 const uid = new ShortUniqueId({ length: 10 });
-const { format, addMonths } = require("date-fns");
+const { format, addMonths, differenceInMonths, compareAsc } = require("date-fns");
 
 exports.checkNecessityBillStatus = asyncHandler(async (req, res, next) => {
     const { contractId } = req.params;
@@ -61,16 +61,70 @@ exports.checkNecessityBillStatus = asyncHandler(async (req, res, next) => {
 exports.checkRoomUtilityBillStatus = asyncHandler(async (req, res, next) => {
     const { contractId } = req.params;
     const connection = await pool.getConnection();
-    const currentDate = format(new Date(), "yyyy-MM-dd");
+    // const currentDate = format(new Date(), "yyyy-MM-dd");
+    const currentDate = format(new Date(), "2024-05-07");
     try {
         // check if there is an unpaid bill in previous months
         const uQuery = "select contract.room_number, room_utility_bill.room_utility_bill_id, room_utility_bill.total_bill, room_utility_bill.bill_due, room_utility_bill.date_paid, room_utility_bill.payment_status from room_utility_bill inner join contract on room_utility_bill.contract_id = contract.contract_id where room_utility_bill.payment_status = false and contract.contract_id = ? and room_utility_bill.bill_due <= ? order by room_utility_bill.bill_due desc;";
         const uValues = [contractId, currentDate];
         const [prevRoomUtilityBills] = await connection.execute(uQuery, uValues);
+        // [
+        //     {
+        //         room_number: 1,
+        //         room_utility_bill_id: 'Z2cJjPaK9s',
+        //         total_bill: 2900,
+        //         bill_due: '2024-04-05',
+        //         date_paid: null,
+        //         payment_status: 0
+        //     }
+        // ]
+        // [
+        //     {
+        //         room_number: 1,
+        //         room_utility_bill_id: 'Z2cJjPaK9s',
+        //         total_bill: 2987,
+        //         bill_due: '2024-04-05',
+        //         date_paid: null,
+        //         payment_status: 0
+        //     }
+        // ]
+
+        if (prevRoomUtilityBills.length > 0) {
+            prevRoomUtilityBills.forEach(async (bill) => {
+                const doubleRoom = [14, 15, 16, 17];
+                const isDoubleRoom = doubleRoom.includes(bill.room_number);
+
+                const interestRate = 0.03;
+                const originalPrincipal = (isDoubleRoom) ? 3700 : 2900;
+
+                const isOverDue = compareAsc(new Date(currentDate), new Date(bill.bill_due));
+                if (isOverDue === 1) {
+                    const overdueMonths = differenceInMonths(new Date(currentDate), new Date(bill.bill_due))
+                    const newTotal = (originalPrincipal) * (interestRate) * (overdueMonths + 1) + originalPrincipal;
+                    const qUpdateBill = "update room_utility_bill set total_bill = ? where room_utility_bill_id = ?";
+                    const vUpdateBill = [newTotal, bill.room_utility_bill_id];
+                    await connection.execute(qUpdateBill, vUpdateBill);
+                    return true
+                }
+                return false;
+            });
+        }
+
+
 
         const cQuery = "select contract.room_number, room_utility_bill.room_utility_bill_id, room_utility_bill.total_bill, room_utility_bill.bill_due, room_utility_bill.date_paid, room_utility_bill.payment_status from room_utility_bill inner join contract on room_utility_bill.contract_id = contract.contract_id where room_utility_bill.payment_status = false and contract.contract_id = ? and room_utility_bill.bill_due > ? order by room_utility_bill.bill_due desc;";
         const vValues = [contractId, currentDate];
         const [nextMonthBills] = await connection.execute(cQuery, vValues);
+        // [
+        //     {
+        //         room_number: 1,
+        //         room_utility_bill_id: 'Z2cJjPaK9s',
+        //         total_bill: 2900,
+        //         bill_due: '2024-04-05',
+        //         date_paid: null,
+        //         payment_status: 0
+        //     }
+        // ]
 
         if ((prevRoomUtilityBills.length > 0) && (nextMonthBills.length < 1)) {
             const roomNumber = prevRoomUtilityBills[0].room_number;
