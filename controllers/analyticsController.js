@@ -185,16 +185,14 @@ exports.getPaymentRatioStatus = asyncHandler(async (req, res, next) => {
             },
         ]
 
-        // bill unpaid/paid ratio 
-        const vRoomUtilityBill = "select count(payment_status) as ratio from necessity_bill where month(bill_due) = month(current_date()) group by payment_status order by payment_status;";
+        const unpaidBillQuery = "select count(payment_status) as count from room_utility_bill where payment_status = false and month(bill_due) = month(current_date());";
+        const [unpaidBillCount] = await connection.query(unpaidBillQuery);
 
-        const [roomUtilityRatio] = await connection.query(vRoomUtilityBill);
-        // [{ ratio: 1 }, { ratio: 2 }] || []
+        const paidBillQuery = "select count(payment_status) as count from room_utility_bill where payment_status = true and month(bill_due) = month(current_date());";
+        const [paidBillCount] = await connection.query(paidBillQuery);
 
-        if (roomUtilityRatio.length > 0) {
-            paymentRatioStatus[0]["value"] = roomUtilityRatio[0]["ratio"];
-            paymentRatioStatus[1]["value"] = roomUtilityRatio[1]["ratio"];
-        }
+        paymentRatioStatus[0].value = unpaidBillCount[0].count;
+        paymentRatioStatus[1].value = paidBillCount[0].count;
 
         res.status(200).json(paymentRatioStatus);
 
