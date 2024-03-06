@@ -61,8 +61,7 @@ exports.checkNecessityBillStatus = asyncHandler(async (req, res, next) => {
 exports.checkRoomUtilityBillStatus = asyncHandler(async (req, res, next) => {
     const { contractId } = req.params;
     const connection = await pool.getConnection();
-    // const currentDate = format(new Date(), "yyyy-MM-dd");
-    const currentDate = format(new Date(), "2024-05-07");
+    const currentDate = format(new Date(), "yyyy-MM-dd");
     try {
         // check if there is an unpaid bill in previous months
         const uQuery = "select contract.room_number, room_utility_bill.room_utility_bill_id, room_utility_bill.total_bill, room_utility_bill.bill_due, room_utility_bill.date_paid, room_utility_bill.payment_status from room_utility_bill inner join contract on room_utility_bill.contract_id = contract.contract_id where room_utility_bill.payment_status = false and contract.contract_id = ? and room_utility_bill.bill_due <= ? order by room_utility_bill.bill_due desc;";
