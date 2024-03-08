@@ -345,11 +345,21 @@ exports.getTenantImage = asyncHandler(async (req, res, next) => {
 
 exports.getLeaseDetails = asyncHandler(async (req, res, next) => {
     const { tenantid } = req.params;
-    const query = "select room.room_number, room_utility_bill.total_bill, contract.start_date, contract.end_date from contract inner join tenant on tenant.tenant_id = contract.tenant_id inner join room_utility_bill on contract.contract_id = room_utility_bill.contract_id inner join room on contract.room_number = room.room_number where tenant.tenant_id = ?;";
-    const values = [tenantid];
+
     const connection = await pool.getConnection();
     try {
+        const query = "select distinct room.room_number, room_utility_bill.total_bill, contract.start_date, contract.end_date from contract inner join tenant on tenant.tenant_id = contract.tenant_id inner join room_utility_bill on contract.contract_id = room_utility_bill.contract_id inner join room on contract.room_number = room.room_number where tenant.tenant_id = ?;";
+        const values = [tenantid];
         const [data] = await connection.execute(query, values);
+
+        const qNecessityBillTotal = "select distinct necessity_bill.total_bill as necessityTotal from contract inner join tenant on tenant.tenant_id = contract.tenant_id  inner join necessity_bill on contract.contract_id = necessity_bill.contract_id  inner join room on contract.room_number = room.room_number  where tenant.tenant_id = ?;";
+        const vNecessityBillTotal = [tenantid];
+        const [necessityTotal] = await connection.execute(qNecessityBillTotal, vNecessityBillTotal);
+        // [ { necessityTotal: 100 } ] || []
+        if (necessityTotal.length > 0) {
+            data[0]["total_bill"] = data[0]["total_bill"] + necessityTotal[0]["necessityTotal"];
+        }
+
         res.status(200).json({
             message: "success",
             data: data,
