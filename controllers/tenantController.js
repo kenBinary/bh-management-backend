@@ -256,11 +256,11 @@ exports.getPaymentHistory = asyncHandler(async (req, res, next) => {
 
     try {
 
-        const qNecessityBills = `select concat(tenant.first_name, " ", tenant.last_name) as 'Full Name', date_format(necessity_bill.date_paid, "%M %d, %Y")  as 'Date Paid',  date_format(necessity_bill.bill_due, "%M %d, %Y")  as 'Bill Due', necessity_bill.total_bill as 'Total Bill'   from necessity_bill inner join contract on contract.contract_id = necessity_bill.contract_id inner join tenant on contract.tenant_id = tenant.tenant_id where necessity_bill.payment_status = true and tenant.tenant_id = ?  order by necessity_bill.date_paid;`;
+        const qNecessityBills = `select "Necessity" as 'Bill Type', date_format(necessity_bill.date_paid, "%M %d, %Y")  as 'Date Paid',  date_format(necessity_bill.bill_due, "%M %d, %Y")  as 'Bill Due', necessity_bill.total_bill as 'Total Bill'   from necessity_bill inner join contract on contract.contract_id = necessity_bill.contract_id inner join tenant on contract.tenant_id = tenant.tenant_id where necessity_bill.payment_status = true and tenant.tenant_id = ?  order by necessity_bill.date_paid;`;
         const vNecessityBills = [tenantid];
         const [necessityBills] = await connection.execute(qNecessityBills, vNecessityBills);
 
-        const qRoomUtilityBills = `select concat(tenant.first_name, " ", tenant.last_name) as 'Full Name', date_format(room_utility_bill.date_paid, "%M %d, %Y")  as 'Date Paid',  date_format(room_utility_bill.bill_due, "%M %d, %Y")  as 'Bill Due', room_utility_bill.total_bill as 'Total Bill'   from room_utility_bill inner join contract on contract.contract_id = room_utility_bill.contract_id inner join tenant on contract.tenant_id = tenant.tenant_id where room_utility_bill.payment_status = true and tenant.tenant_id = ? order by room_utility_bill.date_paid;`;
+        const qRoomUtilityBills = `select  "Room" as 'Bill Type', date_format(room_utility_bill.date_paid, "%M %d, %Y")  as 'Date Paid',  date_format(room_utility_bill.bill_due, "%M %d, %Y")  as 'Bill Due', room_utility_bill.total_bill as 'Total Bill'   from room_utility_bill inner join contract on contract.contract_id = room_utility_bill.contract_id inner join tenant on contract.tenant_id = tenant.tenant_id where room_utility_bill.payment_status = true and tenant.tenant_id = ? order by room_utility_bill.date_paid;`;
         const vRoomUtilityBills = [tenantid];
         const [roomUtilityBills] = await connection.execute(qRoomUtilityBills, vRoomUtilityBills);
 
@@ -387,11 +387,11 @@ exports.getCollectionDetails = asyncHandler(async (req, res, next) => {
 
     try {
         // current invoices
-        const roomInvoice = "select count(room_utility_bill.bill_due) as count from contract  inner join room_utility_bill on contract.contract_id = room_utility_bill.contract_id where contract.tenant_id = ? and month(room_utility_bill.bill_due) = month(current_date()) + 1;";
+        const roomInvoice = "select count(room_utility_bill.bill_due) as count from contract  inner join room_utility_bill on contract.contract_id = room_utility_bill.contract_id where contract.tenant_id = ? and room_utility_bill.date_paid is null and datediff(bill_due,current_date()) <= 7 and datediff(bill_due,current_date()) > 0 ;";
         const roomInvoiceValues = [tenantid];
         const [rInvoice] = await connection.execute(roomInvoice, roomInvoiceValues);
 
-        const necessityInvoice = "select count(necessity_bill.bill_due) as count from contract  inner join necessity_bill on contract.contract_id = necessity_bill.contract_id where contract.tenant_id = ? and month(necessity_bill.bill_due) = month(current_date()) + 1;";
+        const necessityInvoice = "select count(necessity_bill.bill_due) as count from contract  inner join necessity_bill on contract.contract_id = necessity_bill.contract_id where contract.tenant_id = ? and necessity_bill.date_paid is null and datediff(bill_due,current_date()) <= 7 and datediff(bill_due,current_date()) > 0 ;";
         const necessityInvoiceValues = [tenantid];
         const [nInvoice] = await connection.execute(necessityInvoice, necessityInvoiceValues);
         collectionDetails.currentInvoices = rInvoice[0].count + nInvoice[0].count;

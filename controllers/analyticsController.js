@@ -66,7 +66,6 @@ exports.getRoomOverview = asyncHandler(async (req, res, next) => {
     try {
 
         const [roomOverview] = await connection.query("select count(room_status) as count from room group by(room_status) order by room_status;");
-        console.log(roomOverview);
         // [{ count: 2 }, { count: 15 }]
 
         let data = null;
@@ -185,10 +184,12 @@ exports.getPaymentRatioStatus = asyncHandler(async (req, res, next) => {
             },
         ]
 
-        const unpaidBillQuery = "select count(payment_status) as count from room_utility_bill where payment_status = false and month(bill_due) = month(current_date());";
+        // const unpaidBillQuery = "select count(payment_status) as count from room_utility_bill where payment_status = false and month(bill_due) = month(current_date());";
+        const unpaidBillQuery = "select count(payment_status) as count from room_utility_bill where payment_status = false and datediff(bill_due,current_date()) <= 7 and datediff(bill_due,current_date()) > 0";
         const [unpaidBillCount] = await connection.query(unpaidBillQuery);
 
-        const paidBillQuery = "select count(payment_status) as count from room_utility_bill where payment_status = true and month(bill_due) = month(current_date());";
+        // const paidBillQuery = "select count(payment_status) as count from room_utility_bill where payment_status = true and month(bill_due) = month(current_date());";
+        const paidBillQuery = "select count(payment_status) as count from room_utility_bill where payment_status = true and datediff(bill_due,current_date()) <= 7 and datediff(bill_due,current_date()) > 0;";
         const [paidBillCount] = await connection.query(paidBillQuery);
 
         paymentRatioStatus[0].value = unpaidBillCount[0].count;
