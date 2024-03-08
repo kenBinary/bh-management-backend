@@ -68,9 +68,26 @@ exports.assignRoom = [
             // gets the fee for room and utilities
             const [roomFee] = await connection.execute("select room_fee  from room where room_number = ?", [room_number]);
             const [utilityFee] = await connection.query("select utility_fee, utility_id from utility");
-            const totalBill = Number(roomFee[0].room_fee) + Number(utilityFee.reduce((accumulator, currentValue) => {
-                return accumulator + currentValue.utility_fee;
-            }, 0));
+
+            // get occupied blocks
+            const qOccupiedBlock = "select * from room_block where contract_id is not null and room_number = ?";
+            const vOccupiedBlock = [room_number];
+            const [occupiedBlocks] = await connection.execute(qOccupiedBlock, vOccupiedBlock);
+
+
+            let totalBill = 0;
+            if (occupiedBlocks.length > 0) {
+                totalBill = (Number(roomFee[0].room_fee) + Number(utilityFee.reduce((accumulator, currentValue) => {
+                    return accumulator + currentValue.utility_fee;
+                }, 0))) / 2;
+                const qOccupiedBlock = "update room_utility_bill set total_bill = ? where contract_id = ?";
+                const vOccupiedBlock = [totalBill, occupiedBlocks[0].contract_id];
+                await connection.execute(qOccupiedBlock, vOccupiedBlock);
+            } else {
+                totalBill = Number(roomFee[0].room_fee) + Number(utilityFee.reduce((accumulator, currentValue) => {
+                    return accumulator + currentValue.utility_fee;
+                }, 0));
+            }
 
             // get start date of contract
             const qContractCratedDate = "select start_date from contract where contract_id = ?"
@@ -185,10 +202,28 @@ exports.freeRoom = [
                 isFull = !(occupantCount < roomDetail[0].headcount);
             }
 
+            // get unoccupied blocks
+            const qUnoccupiedBlock = "select * from room_block where contract_id is null and room_number = ?";
+            const vUnoccupiedBlock = [room_number];
+            const [unoccupiedBLocks] = await connection.execute(qUnoccupiedBlock, vUnoccupiedBlock);
+
             // update room block
             const qRoomBlock = "update room_block set contract_id = NULL where contract_id = ?";
             const vRoomBlock = [contractId];
             await connection.execute(qRoomBlock, vRoomBlock);
+
+
+            let doubleRooms = [14, 15, 16, 17]
+            if (unoccupiedBLocks.length === 0 && doubleRooms.includes(room_number)) {
+                // get occupied blocks
+                const qOccupiedBlock = "select * from room_block where contract_id is not null and room_number = ?";
+                const vOccupiedBlock = [room_number];
+                const [occupiedBlocks] = await connection.execute(qOccupiedBlock, vOccupiedBlock);
+
+                const qUpdateBillTotal = "update room_utility_bill set total_bill = ? where contract_id = ?";
+                const vUpdateBillTotal = [3700, occupiedBlocks[0].contract_id];
+                await connection.execute(qUpdateBillTotal, vUpdateBillTotal);
+            }
 
             const isOccupied = (occupantCount > 0) ? "occupied" : "vacant";
             const roomQuery = "update room set room_status = ?, is_full = ?, occupant_count = ? where room_number = ? ";
@@ -207,6 +242,7 @@ exports.freeRoom = [
                 "roomList": roomList,
             });
         } catch (error) {
+            console.error(error);
             await connection.rollback();
             res.status(400).json({
                 "message": "failed to remove tenant",
@@ -226,4 +262,3 @@ exports.getTenantsFromRoom = asyncHandler(async (req, res, next) => {
     connection.release();
     res.status(200).json(data);
 });
-
