@@ -339,6 +339,20 @@ exports.payNecessityBill = [
             const vBillNecessityFees = [billId];
             const [billNecessityFees] = await connection.execute(qBillNecessityFees, vBillNecessityFees);
 
+            const qPrevUnpaidBills = "select * from necessity_bill where contract_id = ? and bill_due < ?";
+            const vPrevUnpaidBills = [contractId, currentDate];
+            const [prevUnpaidBills] = await connection.execute(qPrevUnpaidBills, vPrevUnpaidBills);
+
+            prevUnpaidBills.forEach(async (bill) => {
+                const qPrevUnpaidBill = "update necessity_bill set payment_status = true, date_paid = ? where necessity_bill_id = ?";
+                const vPrevUnpaidBill = [currentDate, bill.necessity_bill_id];
+                await connection.execute(qPrevUnpaidBill, vPrevUnpaidBill);
+
+                const qPrevUnpaidFees = "update necessity_fee set is_paid = true where necessity_bill_id = ?";
+                const VPrevUnpaidFees = [bill.necessity_bill_id];
+                await connection.execute(qPrevUnpaidFees, VPrevUnpaidFees);
+            });
+
             // update necessity fees
             billNecessityFees.forEach(async (necessityFee) => {
                 if (necessityFee.necessity_id in paidNecessities) {
