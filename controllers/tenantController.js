@@ -419,7 +419,7 @@ exports.getCollectionDetails = asyncHandler(async (req, res, next) => {
         collectionDetails.totalNecessity = (totalNecessityResult[0].total_necessity) ? totalNecessityResult[0].total_necessity : 0;
 
         // total
-        collectionDetails.total = collectionDetails.totalRent + collectionDetails.totalNecessity;
+        collectionDetails.total = Number(collectionDetails.totalRent) + Number(collectionDetails.totalNecessity);
 
         res.status(200).json({
             message: "success",
