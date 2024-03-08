@@ -88,26 +88,26 @@ exports.checkRoomUtilityBillStatus = asyncHandler(async (req, res, next) => {
         //     }
         // ]
 
-        if (prevRoomUtilityBills.length > 0) {
-            prevRoomUtilityBills.forEach(async (bill) => {
-                const doubleRoom = [14, 15, 16, 17];
-                const isDoubleRoom = doubleRoom.includes(bill.room_number);
+        // if (prevRoomUtilityBills.length > 0) {
+        //     prevRoomUtilityBills.forEach(async (bill) => {
+        //         const doubleRoom = [14, 15, 16, 17];
+        //         const isDoubleRoom = doubleRoom.includes(bill.room_number);
 
-                const interestRate = 0.03;
-                const originalPrincipal = (isDoubleRoom) ? 3700 : 2900;
+        //         const interestRate = 0.03;
+        //         const originalPrincipal = (isDoubleRoom) ? 3700 : 2900;
 
-                const isOverDue = compareAsc(new Date(currentDate), new Date(bill.bill_due));
-                if (isOverDue === 1) {
-                    const overdueMonths = differenceInMonths(new Date(currentDate), new Date(bill.bill_due))
-                    const newTotal = (originalPrincipal) * (interestRate) * (overdueMonths + 1) + originalPrincipal;
-                    const qUpdateBill = "update room_utility_bill set total_bill = ? where room_utility_bill_id = ?";
-                    const vUpdateBill = [newTotal, bill.room_utility_bill_id];
-                    await connection.execute(qUpdateBill, vUpdateBill);
-                    return true
-                }
-                return false;
-            });
-        }
+        //         const isOverDue = compareAsc(new Date(currentDate), new Date(bill.bill_due));
+        //         if (isOverDue === 1) {
+        //             const overdueMonths = differenceInMonths(new Date(currentDate), new Date(bill.bill_due))
+        //             const newTotal = (originalPrincipal) * (interestRate) * (overdueMonths + 1) + originalPrincipal;
+        //             const qUpdateBill = "update room_utility_bill set total_bill = ? where room_utility_bill_id = ?";
+        //             const vUpdateBill = [newTotal, bill.room_utility_bill_id];
+        //             await connection.execute(qUpdateBill, vUpdateBill);
+        //             return true
+        //         }
+        //         return false;
+        //     });
+        // }
 
 
 
